@@ -5,10 +5,12 @@ Created Date: 2023-09-03 13:44:00
 Author: chenkaixu
 -----
 Comment:
+preprocess script include the pose estimation, optical flow, and mask.
+This is used for define the one gait cycle from video.
  
 Have a good code time!
 -----
-Last Modified: 2023-09-03 15:08:55
+Last Modified: 2023-10-19 02:14:33
 Modified By: chenkaixu
 -----
 HISTORY:

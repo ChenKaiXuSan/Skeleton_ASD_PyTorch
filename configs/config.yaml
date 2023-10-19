@@ -26,7 +26,7 @@ train:
   max_epochs: 50 # numer of epochs of training
   batch_size: 8 # batch size for the dataloader
   clip_duration: 1 # clip duration for the video
-  uniform_temporal_subsample_num: 8 # num frame from the clip duration
+  uniform_temporal_subsample_num: 30 # num frame from the clip duration, for define one gait cycle, we need use whole frames.
 
   gpu_num: 0 # choices=[0, 1], help='the gpu number whicht to train'
 

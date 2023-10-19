@@ -5,10 +5,12 @@ Created Date: 2023-09-03 13:44:23
 Author: chenkaixu
 -----
 Comment:
+YOLOv8 model for pose estimation and mask.
+From the ultralytics model.
  
 Have a good code time!
 -----
-Last Modified: 2023-09-10 06:42:03
+Last Modified: 2023-10-19 02:14:59
 Modified By: chenkaixu
 -----
 HISTORY:

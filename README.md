@@ -1,33 +1,12 @@
-### Deep learning project seed
-Use this seed to start new deep learning / ML projects.
-
-- Built in setup.py
-- Built in requirements
-- Examples with MNIST
-- Badges
-- Bibtex
-
-#### Goals  
-The goal of this seed is to structure ML paper-code the same so that work can easily be extended and replicated.   
-
-### DELETE EVERYTHING ABOVE FOR YOUR PROJECT  
- 
----
-
 <div align="center">    
  
-# Your Project Name     
-
-[![Paper](http://img.shields.io/badge/paper-arxiv.1001.2234-B31B1B.svg)](https://www.nature.com/articles/nature14539)
-[![Conference](http://img.shields.io/badge/NeurIPS-2019-4b44ce.svg)](https://papers.nips.cc/book/advances-in-neural-information-processing-systems-31-2018)
-[![Conference](http://img.shields.io/badge/ICLR-2019-4b44ce.svg)](https://papers.nips.cc/book/advances-in-neural-information-processing-systems-31-2018)
-[![Conference](http://img.shields.io/badge/AnyConference-year-4b44ce.svg)](https://papers.nips.cc/book/advances-in-neural-information-processing-systems-31-2018)  
+# Skeleton Video based Action Recognition for Adult Spinal Deformity Classification
+  
 <!--
 ARXIV   
 [![Paper](http://img.shields.io/badge/arxiv-math.co:1480.1111-B31B1B.svg)](https://www.nature.com/articles/nature14539)
 -->
 ![CI testing](https://github.com/PyTorchLightning/deep-learning-project-template/workflows/CI%20testing/badge.svg?branch=master&event=push)
-
 
 <!--  
 Conference   
@@ -35,50 +14,52 @@ Conference
 </div>
  
 ## Description   
-What it does   
 
-## How to run   
-First, install dependencies   
-```bash
-# clone project   
-git clone https://github.com/YourGithubName/deep-learning-project-template
+The main contribute of this project is:
 
-# install project   
-cd deep-learning-project-template 
-pip install -e .   
-pip install -r requirements.txt
- ```   
- Next, navigate to any file and run it.   
- ```bash
-# module folder
-cd project
+1. use pose estimation to define the gait cycle for different person.
+2. split the gait cycle into several parts. 
+3. use the splitted gait cycle to train the model.
+4. use the trained model to classify the disease. 
+5. test with the different gait cycle part. 
 
-# run module (example: mnist as your main contribution)   
-python lit_classifier_main.py    
-```
+The classification label is:
 
-## Imports
-This project is setup as a package which means you can now easily import any file into any other file like so:
-```python
-from project.datasets.mnist import mnist
-from project.lit_classifier_main import LitClassifier
-from pytorch_lightning import Trainer
+- ASD
+- DHS
+- HipOA + LCS
+- Normal
 
-# model
-model = LitClassifier()
+The reason why I combine the HipOA with LCS has two point,
 
-# data
-train, val, test = mnist()
+1. data is not enough. 
+2. the HipOA and LCS are similar in the medical expression.
 
-# train
-trainer = Trainer()
-trainer.fit(model, train, val)
+## How to define One Gait Cycle
 
-# test using the best model!
-trainer.test(test_dataloaders=test)
-```
+Define the **One Gait Cycle** is a key point in this study.
+A simple but effective way is to use the **pose estimation**.
+We use one certain keypoint (left foot, etc.) to define the gait cycle.
 
-### Citation   
+![define one gait cycle](images/define_one_gait_cycle.png)
+
+To estimate the keypoint, we try to use some different method to predict the keypoint.
+
+1. YOLOv8 pose estimation
+2. mediapipe pose estimation
+3. openpose
+
+## Abliation Study for different view 
+
+When record the video, we can use different view to record the video.
+In this dataset, it includes two different view.
+
+- left view 
+- right view
+
+Here we try to use the different view to train the model, with several gait parts.
+
+## Citation   
 ```
 @article{YourName,
   title={Your Title},
