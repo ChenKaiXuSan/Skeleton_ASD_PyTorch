@@ -1,6 +1,6 @@
 '''
 File: yolov8.py
-Project: models
+Project: prepare_annotation
 Created Date: 2023-09-03 12:58:59
 Author: chenkaixu
 -----
@@ -9,8 +9,8 @@ Define one gait cycle in give video splitted.
 
 Have a good code time!
 -----
-Last Modified: 2023-10-19 03:04:04
-Modified By: chenkaixu
+Last Modified: Monday October 30th 2023 6:50:52 am
+Modified By: the developer formerly known as Kaixu Chen at <chenkaixusan@gmail.com>
 -----
 HISTORY:
 Date 	By 	Comments
@@ -21,6 +21,8 @@ Date 	By 	Comments
 # %% 
 import os, logging, shutil, sys, math
 sys.path.append("/workspace/skeleton")
+os.environ["HYDRA_FULL_ERROR"] = "1"
+
 import torch
 from torchvision.transforms.functional import crop, pad, resize, hflip
 from torchvision.utils import save_image, draw_keypoints
@@ -28,11 +30,12 @@ from torchvision.io import read_image, read_video, write_video, write_png
 
 from math import pi
 import numpy as np
+from pathlib import Path
 
 import hydra
 import matplotlib.pyplot as plt
 
-from project.models.preprocess import Preprocess
+from prepare.prepare_gait_dataset.preprocess import Preprocess
 
 from ultralytics import YOLO
 
@@ -282,14 +285,9 @@ def _draw_ankle_curve(kpt: torch.Tensor, part = "left_ankle"):
 
     logging.info('draw the ankle curve and save it!')
 
-@hydra.main(config_path="/workspace/skeleton/configs/", config_name="config")
-def init_params(config):
+def define_gait_cycle(config, one_video_path: dict):
     
-    # DATA_PATH = config.data_path
-    # SAVE_PATH = config.save_path
-    IMG_SIZE = config.data.img_size
-    PATH = "/workspace/data/split_pad_dataset_512/flod0/train/ASD/20160426_ASD_lat__V1-0001.mp4"
-    # PATH = "/workspace/data/split_pad_dataset_512/flod0/train/ASD/20160426_ASD_lat__V1-0002.mp4"
+    PATH = one_video_path  
 
     preprocess = Preprocess(config)
     video, _, info = read_video(PATH, pts_unit="sec", output_format='TCHW')
@@ -308,7 +306,9 @@ def init_params(config):
 
     gait_cycle_index = get_gait_cycle(pose, part="left_ankle")
     # gait_cycle_index_right = gait_cycle(pose, part="right_ankle")
-
+    
+    logging.info(gait_cycle_index)
+    
     print(gait_cycle_index)
 
     mid_coord = get_spinal_angle(pose) # b, f, k, xy, here k=5, xy is the mid coordinate
@@ -317,34 +317,3 @@ def init_params(config):
     _draw_keypoints(mid_coord, video)
 
     _draw_ankle_curve(pose, part='left_ankle')
-    
-
-    
-if __name__ == "__main__":
-
-    os.environ["HYDRA_FULL_ERROR"] = "1"
-    init_params()
-
-# reference code
-import math
-
-def calc_angle(a: list, b: list):
-    # 输入两个点的坐标
-    x1, y1 = a  # 修改为你的第一个点的坐标
-    x2, y2 = b  # 修改为你的第二个点的坐标
-
-    # 计算两点之间的角度（弧度）
-    delta_x = x2 - x1
-    delta_y = y2 - y1
-    angle_rad = math.atan2(delta_y, delta_x)
-
-    # 将弧度转换为度数
-    angle_deg = math.degrees(angle_rad)
-
-    print("两点之间的角度（度数）：", angle_deg)
-
-    # %%
-    plt.scatter(x1, y1)
-    plt.scatter(x2, y2)
-    plt.plot([x1, x2], [y1, y2], "r")
-    

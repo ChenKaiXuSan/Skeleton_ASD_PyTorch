@@ -8,12 +8,13 @@ Comment:
  
 Have a good code time!
 -----
-Last Modified: 2023-10-19 02:42:33
-Modified By: chenkaixu
+Last Modified: Thursday October 19th 2023 2:29:35 am
+Modified By: the developer formerly known as Kaixu Chen at <chenkaixusan@gmail.com>
 -----
 HISTORY:
 Date 	By 	Comments
 ------------------------------------------------
+2023-10-29	KX.C	add the lr monitor, and fast dev run to trainer.
 
 '''
 
@@ -23,7 +24,7 @@ from pytorch_lightning import loggers as pl_loggers
 from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
 
 # callbacks
-from pytorch_lightning.callbacks import TQDMProgressBar, RichModelSummary, ModelCheckpoint, EarlyStopping
+from pytorch_lightning.callbacks import TQDMProgressBar, RichModelSummary, ModelCheckpoint, EarlyStopping, LearningRateMonitor
 from pl_bolts.callbacks import PrintTableMetricsCallback, TrainingDataMonitor
 
 from dataloader.data_loader import WalkDataModule
@@ -34,7 +35,7 @@ import wandb
 import hydra
 
 # login the wandb
-wandb.login(anonymous="allow", key="eeece7dd9910c3cc2be6ae3e2f8b9b666f878066")
+# wandb.login(anonymous="allow", key="eeece7dd9910c3cc2be6ae3e2f8b9b666f878066")
 
 def train(hparams):
 
@@ -47,14 +48,14 @@ def train(hparams):
     data_module = WalkDataModule(hparams)
 
     # for the tensorboard
-    # tb_logger = pl_loggers.TensorBoardLogger(save_dir=os.path.join(hparams.log_path, hparams.model), name=hparams.log_version, version=hparams.fold)
+    tb_logger = pl_loggers.TensorBoardLogger(save_dir=os.path.join(hparams.train.log_path, hparams.model.model), name=hparams.train.version, version=hparams.train.fold)
 
     # init wandb logger
-    wandb_logger = WandbLogger(name='_'.join([hparams.train.version, hparams.model.model, hparams.train.fold]), 
-                            project='gait_cycle_3DCNN',
-                            save_dir=hparams.train.log_path,
-                            version=hparams.train.fold,
-                            log_model="all")
+    # wandb_logger = WandbLogger(name='_'.join([hparams.train.version, hparams.model.model, hparams.train.fold]), 
+    #                         project='gait_cycle_3DCNN',
+    #                         save_dir=hparams.train.log_path,
+    #                         version=hparams.train.fold,
+    #                         log_model="all")
 
     # some callbacks
     progress_bar = TQDMProgressBar(refresh_rate=100)
@@ -81,14 +82,17 @@ def train(hparams):
     # table_metrics_callback = PrintTableMetricsCallback()
     # monitor = TrainingDataMonitor(log_every_n_steps=50)
 
+    lr_monitor = LearningRateMonitor(logging_interval='step')
+
     trainer = Trainer(
                       devices=[hparams.train.gpu_num,],
                       accelerator="gpu",
                       max_epochs=hparams.train.max_epochs,
-                      logger= wandb_logger, # tb_logger
+                      logger= tb_logger, # wandb_logger,
                       #   log_every_n_steps=100,
                       check_val_every_n_epoch=1,
-                      callbacks=[progress_bar, rich_model_summary, model_check_point, early_stopping],
+                      callbacks=[progress_bar, rich_model_summary, model_check_point, early_stopping, lr_monitor],
+                      fast_dev_run=hparams.train.fast_dev_run, # if use fast dev run for debug.
                       #   deterministic=True
                       )
 

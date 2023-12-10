@@ -8,7 +8,7 @@ Comment:
  
 Have a good code time!
 -----
-Last Modified: 2023-10-19 02:47:59
+Last Modified: 2023-10-29 12:24:35
 Modified By: chenkaixu
 -----
 HISTORY:
@@ -94,8 +94,8 @@ class GaitCycleLightningModule(LightningModule):
 
         return total_loss
 
-    def on_train_epoch_end(self) -> None:
-        self.log("lr", self.optimizers().param_groups[0]["lr"])
+    # def on_train_epoch_end(self) -> None:
+    #     self.log("lr", self.optimizers().param_groups[0]["lr"])
 
     def on_validation_start(self) -> None:
         wandb.define_metric("val/loss", summary="min")

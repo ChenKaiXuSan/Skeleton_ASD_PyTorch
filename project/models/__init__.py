@@ -8,8 +8,8 @@ Comment:
  
 Have a good code time!
 -----
-Last Modified: 2023-10-19 02:50:20
-Modified By: chenkaixu
+Last Modified: Monday October 30th 2023 6:50:52 am
+Modified By: the developer formerly known as Kaixu Chen at <chenkaixusan@gmail.com>
 -----
 HISTORY:
 Date 	By 	Comments
@@ -17,8 +17,11 @@ Date 	By 	Comments
 
 '''
 
+import sys
+sys.path.append('/workspace/skeleton/project/models')
+
 from make_model import *
 from optical_flow import *
-from yolov8 import *
-from preprocess import *
-from one_gait_cycle import *
+from prepare.prepare_gait_dataset.yolov8 import *
+from prepare.prepare_gait_dataset.preprocess import *
+from prepare.prepare_gait_dataset.one_gait_cycle import *

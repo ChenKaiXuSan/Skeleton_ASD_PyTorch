@@ -17,6 +17,7 @@ model:
 YOLO:
   pose_ckpt: "/workspace/skeleton/ckpt/yolov8x-pose.pt"
   seg_ckpt: "/workspace/skeleton/ckpt/yolov8x-seg.pt"
+  bbox_ckpt: "/workspace/skeleton/ckpt/yolov8x.pt"
   conf: 0.8
   iou: 0.5
   verbose: False
@@ -24,9 +25,9 @@ YOLO:
 train:
   # Training config
   max_epochs: 50 # numer of epochs of training
-  batch_size: 8 # batch size for the dataloader
+  batch_size: 1 # batch size for the dataloader
   clip_duration: 1 # clip duration for the video
-  uniform_temporal_subsample_num: 30 # num frame from the clip duration, for define one gait cycle, we need use whole frames.
+  uniform_temporal_subsample_num: 8 # num frame from the clip duration, for define one gait cycle, we need use whole frames.
 
   gpu_num: 0 # choices=[0, 1], help='the gpu number whicht to train'
 
@@ -36,3 +37,6 @@ train:
 
   version: "${model.model}" # the version of logger, such data
   log_path: "/workspace/skeleton/logs/${model.model}/${now:%Y-%m-%d}/${now:%H-%M-%S}/${train.clip_duration}_${train.uniform_temporal_subsample_num}_${model.model_depth}"
+
+  fast_dev_run: False # if use the fast_dev_run
+  fold: 0 # the fold of the cross validation

@@ -5,10 +5,13 @@ Created Date: 2023-10-19 05:02:38
 Author: chenkaixu
 -----
 Comment:
+
+Readin image, and convert to the format of the annotation file.
+like: path, start_frame, end_frame, disease_id, gait_id
  
 Have a good code time!
 -----
-Last Modified: 2023-10-19 05:02:43
+Last Modified: 2023-10-26 05:26:51
 Modified By: chenkaixu
 -----
 HISTORY:
@@ -19,7 +22,8 @@ Date 	By 	Comments
 
 import pandas as pd
 from typing import Dict
-import os
+import os, logging
+from prepare_annotation.one_gait_cycle import define_gait_cycle
 
 label_to_id_file = 'labels_to_id.csv'
 annotation_in_file = 'train.csv'
@@ -60,3 +64,5 @@ with open(annotation_out_file, 'w') as f:
 
         annotation_string = "{} {} {} {}\n".format(video_id, start_frame, num_frames-1, class_id)
         f.write(annotation_string)
+
+# %% 

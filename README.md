@@ -13,6 +13,16 @@ Conference
 -->   
 </div>
  
+``` mermaid
+graph LR
+A[video] --> B(location detector)
+B --> C[Human area]
+C --> D(gait definition)
+D --> E[gait part]
+E --> F(Classification)
+F --> G[final result]
+```
+
 ## Description   
 
 The main contribute of this project is:

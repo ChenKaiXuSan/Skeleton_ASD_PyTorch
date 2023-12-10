@@ -1,0 +1,28 @@
+# hydra config
+hydra:
+  run:
+    dir: /workspace/skeleton/logs/prepare_dataset/${now:%Y-%m-%d}/${now:%H-%M-%S}
+
+YOLO:
+  pose_ckpt: "/workspace/skeleton/ckpt/yolov8x-pose.pt"
+  seg_ckpt: "/workspace/skeleton/ckpt/yolov8x-seg.pt"
+  bbox_ckpt: "/workspace/skeleton/ckpt/yolov8x.pt"
+  conf: 0.8
+  iou: 0.5
+  verbose: False
+
+# Path
+# step1: from raw video to extracted video.
+# use YOLOv8 detection with tracking.
+extract_dataset:
+  data_path: ""
+  save_path: "/workspace/data/segmentation_dataset_512"
+
+# step2: from extracted video to define the gait cycle.
+gait_dataset:
+  data_path: "/workspace/data/segmentation_dataset_512" # meta four view dataset path, with human annotation.
+  save_path: "/workspace/data/segmentation_gait_dataset_512" # convert the four view dataset into a format of the annotation file.
+  gait_cycle_split: 2 # define the gait cycle split number.  
+  define_part: "left_ankle"
+
+

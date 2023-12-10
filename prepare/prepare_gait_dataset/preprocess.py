@@ -10,8 +10,8 @@ This is used for define the one gait cycle from video.
  
 Have a good code time!
 -----
-Last Modified: 2023-10-19 02:14:33
-Modified By: chenkaixu
+Last Modified: Monday October 30th 2023 6:50:52 am
+Modified By: the developer formerly known as Kaixu Chen at <chenkaixusan@gmail.com>
 -----
 HISTORY:
 Date 	By 	Comments
@@ -31,7 +31,7 @@ from torchvision.io import write_png
 from torchvision.utils import flow_to_image
 
 # from optical_flow import OpticalFlow
-from .yolov8 import  MultiPreprocess
+from prepare.prepare_gait_dataset.yolov8 import  MultiPreprocess
 
 class Preprocess(nn.Module):
 
@@ -74,7 +74,14 @@ class Preprocess(nn.Module):
 
     def shape_check(self, check: list):
         """
-        shape_check check give value shape
+        shape_check check the given value shape, and assert the shape.
+
+        check list include:
+        # batch, (b, c, t, h, w)
+        # label, (b)
+        # bbox, (b, t, 4) (cxcywh)
+        # mask, (b, 1, t, h, w)
+        # keypoint, (b, t, 17, 2)
 
         Args:
             check (list): checked value, in list.
@@ -88,8 +95,12 @@ class Preprocess(nn.Module):
             
             # for label shape
             if len(ck.shape) == 1: assert ck.shape[0] == b 
-            # for other shape
-            else: assert ck.shape[2] == t
+            # for bbox shape
+            elif len(ck.shape) == 3: assert ck.shape[0] == b and ck.shape[1] == t
+            # for mask shape
+            elif len(ck.shape) == 5: assert ck.shape[0] == b and ck.shape[2] == t
+            # for keypoint shape
+            elif len(ck.shape) == 4: assert ck.shape[0] == b and ck.shape[1] == t and ck.shape[2] == 17
 
     def forward(self, batch: torch.tensor, labels: list, batch_idx: int):
         """
@@ -107,12 +118,12 @@ class Preprocess(nn.Module):
         b, c, t, h, w = batch.shape
 
         # process mask, pose
-        video, labels, mask, pose = self.yolo_model(batch, labels)
+        video, labels, bbox, mask, pose = self.yolo_model(batch, labels)
 
         # shape check
-        self.shape_check([video, labels, mask, pose])
+        self.shape_check([video, labels, mask, bbox, pose])
 
-        self.save_img(mask, flag='mask', epoch_idx=batch_idx)
+        # self.save_img(mask, flag='mask', epoch_idx=batch_idx)
 
         # process optical flow
         # optical_flow = self.of_model(video)
@@ -122,5 +133,5 @@ class Preprocess(nn.Module):
 
         # self.save_img(optical_flow, flag='optical_flow', epoch_idx=batch_idx)
         
-        # return video, labels, optical_flow, mask, pose
-        return video, labels, None, mask, pose
+        # return video, labels, optical_flow, bbox, mask, pose
+        return video, labels, None, bbox, mask, pose
