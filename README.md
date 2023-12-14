@@ -49,7 +49,7 @@ The reason why I combine the HipOA with LCS has two point,
 
 Define the **One Gait Cycle** is a key point in this study.
 A simple but effective way is to use the **pose estimation**.
-We use one certain keypoint (left foot, etc.) to define the gait cycle.
+For example, use one certain keypoint (left foot, etc.) to define the gait cycle.
 
 ![define one gait cycle](images/define_one_gait_cycle.png)
 
@@ -58,6 +58,8 @@ To estimate the keypoint, we try to use some different method to predict the key
 1. YOLOv8 pose estimation
 2. mediapipe pose estimation
 3. openpose
+
+But, there also have some problem in this method.
 
 ## Abliation Study for different view 
 

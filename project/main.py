@@ -1,4 +1,4 @@
-'''
+"""
 File: main.py
 Project: project
 Created Date: 2023-10-19 02:29:35
@@ -16,46 +16,43 @@ Date 	By 	Comments
 ------------------------------------------------
 2023-10-29	KX.C	add the lr monitor, and fast dev run to trainer.
 
-'''
+"""
 
-import os, logging, time, sys
+import os, logging, time, sys, json
 from pytorch_lightning import Trainer, seed_everything
-from pytorch_lightning import loggers as pl_loggers
-from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
+from pytorch_lightning.loggers import TensorBoardLogger
 
 # callbacks
-from pytorch_lightning.callbacks import TQDMProgressBar, RichModelSummary, ModelCheckpoint, EarlyStopping, LearningRateMonitor
-from pl_bolts.callbacks import PrintTableMetricsCallback, TrainingDataMonitor
+from pytorch_lightning.callbacks import (
+    TQDMProgressBar,
+    RichModelSummary,
+    ModelCheckpoint,
+    EarlyStopping,
+    LearningRateMonitor,
+)
 
 from dataloader.data_loader import WalkDataModule
 from train import GaitCycleLightningModule
 
-import pytorch_lightning
-import wandb
 import hydra
 
-# login the wandb
-# wandb.login(anonymous="allow", key="eeece7dd9910c3cc2be6ae3e2f8b9b666f878066")
+from sklearn.model_selection import StratifiedGroupKFold, train_test_split, GroupKFold
+from pathlib import Path
 
-def train(hparams):
 
-    # fixme will occure bug, with deterministic = true
+def train(hparams, dataset_idx, fold):
+
     seed_everything(42, workers=True)
 
     classification_module = GaitCycleLightningModule(hparams)
 
-    # instance the data module
-    data_module = WalkDataModule(hparams)
+    data_module = WalkDataModule(hparams, dataset_idx)
 
     # for the tensorboard
-    tb_logger = pl_loggers.TensorBoardLogger(save_dir=os.path.join(hparams.train.log_path, hparams.model.model), name=hparams.train.version, version=hparams.train.fold)
-
-    # init wandb logger
-    # wandb_logger = WandbLogger(name='_'.join([hparams.train.version, hparams.model.model, hparams.train.fold]), 
-    #                         project='gait_cycle_3DCNN',
-    #                         save_dir=hparams.train.log_path,
-    #                         version=hparams.train.fold,
-    #                         log_model="all")
+    tb_logger = TensorBoardLogger(
+        save_dir=os.path.join(hparams.train.log_path),
+        name=fold
+    )
 
     # some callbacks
     progress_bar = TQDMProgressBar(refresh_rate=100)
@@ -63,9 +60,9 @@ def train(hparams):
 
     # define the checkpoint becavier.
     model_check_point = ModelCheckpoint(
-        filename="{epoch}-{val/loss:.2f}-{val/acc:.4f}",
+        filename="{epoch}-{val/loss:.2f}-{val/video_acc:.4f}",
         auto_insert_metric_name=False,
-        monitor="val/acc",
+        monitor="val/video_acc",
         mode="max",
         save_last=False,
         save_top_k=2,
@@ -73,105 +70,187 @@ def train(hparams):
 
     # define the early stop.
     early_stopping = EarlyStopping(
-        monitor='val/loss',
-        patience=5,
-        mode='min',
+        monitor="val/loss",
+        patience=10,
+        mode="min",
     )
 
-    # bolts callbacks
-    # table_metrics_callback = PrintTableMetricsCallback()
-    # monitor = TrainingDataMonitor(log_every_n_steps=50)
-
-    lr_monitor = LearningRateMonitor(logging_interval='step')
+    lr_monitor = LearningRateMonitor(logging_interval="step")
 
     trainer = Trainer(
-                      devices=[hparams.train.gpu_num,],
-                      accelerator="gpu",
-                      max_epochs=hparams.train.max_epochs,
-                      logger= tb_logger, # wandb_logger,
-                      #   log_every_n_steps=100,
-                      check_val_every_n_epoch=1,
-                      callbacks=[progress_bar, rich_model_summary, model_check_point, early_stopping, lr_monitor],
-                      fast_dev_run=hparams.train.fast_dev_run, # if use fast dev run for debug.
-                      #   deterministic=True
-                      )
+        devices=[
+            int(hparams.train.gpu_num),
+        ],
+        accelerator="gpu",
+        max_epochs=hparams.train.max_epochs,
+        logger=tb_logger,  # wandb_logger,
+        check_val_every_n_epoch=1,
+        callbacks=[
+            progress_bar,
+            rich_model_summary,
+            model_check_point,
+            early_stopping,
+            lr_monitor,
+        ],
+        fast_dev_run=hparams.train.fast_dev_run,  # if use fast dev run for debug.
+    )
 
-    # from the params
-    # trainer = Trainer.from_argparse_args(hparams)
-
-    # training and val
     trainer.fit(classification_module, data_module)
 
-    # TODO take code the record the val figure, in wandb and local file.
-    trainer.validate(classification_module, data_module) # , ckpt_path='best')
+    trainer.validate(classification_module, data_module, ckpt_path="best")
 
-    # when one fold finish, close the wandb logger.
-    wandb.finish()
+def define_cross_validation(video_path: str, K: int = 5):
+    """define cross validation first, with the K.
+    #! the 1 fold and K fold should return the same format.
+    train = {
+        0: {
+            "disease1": [patient1_idx, patient2_idx, ...],
+            "disease2": [patient1_idx, patient2_idx, ...],
+    }
+    val = {
+        0: {
+            "disease1": [patient1_idx, patient2_idx, ...],
+            "disease2": [patient1_idx, patient2_idx, ...],
+    }
 
-    # return the best acc score.
-    return model_check_point.best_model_score.item()
+    Args:
+        video_path (str): the index of the video path, in .json format.
+        K (int, optional): crossed number of validation. Defaults to 5, can be 1 or K.
+
+    Returns:
+        list: the format like upper.
+    """
+
+    _path = Path(video_path)
+
+    # define the cross validation
+    if K > 1:
+        ans_Dict = {}
+
+        # process one disease in one loop.
+        for disease in _path.iterdir():
+            disease_List = []
+
+            X = []  # patient index
+            groups = []  # different patient groups
+
+            if disease.name != "log":
+                patient_list = sorted(list(disease.iterdir()))
+                name_map = set()
+
+                for p in patient_list:
+                    name, _ = p.name.split("-")
+                    name_map.add(name)
+
+                element_to_num = {element: idx for idx, element in enumerate(name_map)}
+
+                for i in range(len(patient_list)):
+                    name, _ = patient_list[i].name.split("-")
+
+                    X.append(i)
+
+                    groups.append(element_to_num[name])
+
+                sgkf = GroupKFold(n_splits=K)
+
+                for i, (train_index, test_index) in enumerate(
+                    sgkf.split(X=X, groups=groups)
+                ):
+                    train_idx = [patient_list[i] for i in train_index]
+                    val_idx = [patient_list[i] for i in test_index]
+
+                    # store one fold in one disease
+                    disease_List.append([train_idx, val_idx])
+
+                ans_Dict[disease.name] = disease_List
+                # TODO: 需要把cv的结果可视化一下，看看有没有混用
+
+        final_ans_dict = {}
+
+        # * convert the disease:fold:train/val
+        # * fold: train/val: disease: index
+
+        for i in range(K):
+
+            train_dict = {}
+            val_dict = {}
+
+            for d, f in ans_Dict.items():
+                for j in range(len(f)):
+                    train_dict[d] = f[j][0]
+                    val_dict[d] = f[j][1]
+
+            final_ans_dict[i] = [train_dict, val_dict]
+
+        # writ to csv file 
+        with open('./misc/data_distribution.json', 'w') as f:
+            json.dump(final_ans_dict, f)
+
+        return final_ans_dict
+
+    # only have 1 fold
+    else:
+        train_idx = {}
+        val_idx = {}
+        for disease in _path.iterdir():
+            if disease.name != "log":
+                sample_list = list(disease.iterdir())
+                train, val = train_test_split(
+                    range(len(sample_list)), test_size=0.2, random_state=42
+                )
+
+                # here load the video path by index.
+                train_idx[disease.name] = {0: [sample_list[i] for i in train]}
+                val_idx[disease.name] = {0: [sample_list[i] for i in val]}
+
+        return {0: [train_idx, val_idx]}
+
 
 @hydra.main(
-        version_base=None,
-        config_path='/workspace/skeleton/configs',
-        config_name='config.yaml',
-        )
+    version_base=None,
+    config_path="/workspace/skeleton/configs",
+    config_name="config.yaml",
+)
 def init_params(config):
 
-    #############
-    # K Fold CV
-    #############
+    # DATE = str(time.localtime().tm_mon) + str(time.localtime().tm_mday)
 
-    DATE = str(time.localtime().tm_mon) + str(time.localtime().tm_mday)
-    DATA_PATH = config.data.data_path
+    _gait_seg_path = config.data.gait_seg_data_path
 
     # set the version
-    uniform_temporal_subsample_num = config.train.uniform_temporal_subsample_num
-    clip_duration = config.train.clip_duration
-    config.train.version = "_".join(
-        [DATE, str(clip_duration), str(uniform_temporal_subsample_num)]
-    )
+    # uniform_temporal_subsample_num = config.train.uniform_temporal_subsample_num
+    # clip_duration = config.train.clip_duration
+    # config.train.version = "_".join(
+    #     [DATE, str(clip_duration), str(uniform_temporal_subsample_num)]
+    # )
 
-    # output log to file
-    log_path = (
-        "/workspace/skeleton/logs"
-        + "_".join([config.train.version, config.model.model])
-        + ".log"
-    )
-    sys.stdout = open(log_path, "w")
-
-    # get the fold number
-    fold_num = os.listdir(DATA_PATH)
-    fold_num.sort()
-    if "raw" in fold_num:
-        fold_num.remove("raw")
-
-    store_Acc_Dict = {}
-    sum_list = []
-
-    for fold in fold_num:
-        #################
-        # start k Fold CV
-        #################
-
-        logging.info("#" * 50)
-        logging.info("Start %s" % fold)
-        logging.info("#" * 50)
-
-        config.train.train_path = os.path.join(DATA_PATH, fold)
-        config.train.fold = fold
-
-        Acc_score = train(config)
-
-        store_Acc_Dict[fold] = Acc_score
-        sum_list.append(Acc_score)
+    # * we need prepare the cross validation dataset index first.
+    fold_dataset_idx = define_cross_validation(_gait_seg_path, config.train.fold)
 
     logging.info("#" * 50)
-    logging.info("different fold Acc:")
-    logging.info(store_Acc_Dict)
-    logging.info("Final avg Acc is: %s" % (sum(sum_list) / len(sum_list)))
+    logging.info("Start train all fold")
+    logging.info("#" * 50)
 
-if __name__ == '__main__':
+    #############
+    # K fold
+    #############
 
+    for fold, dataset_value in fold_dataset_idx.items():
+
+        logging.info("#" * 50)
+        logging.info("Start train fold: {}".format(fold))
+        logging.info("#" * 50)
+
+        train(config, dataset_value, fold)
+
+        logging.info("#" * 50)
+        logging.info("finish train fold: {}".format(fold))
+        logging.info("#" * 50)
+
+    logging.info("#" * 50)
+    logging.info("finish train all fold")
+    logging.info("#" * 50)
+
+if __name__ == "__main__":
     os.environ["HYDRA_FULL_ERROR"] = "1"
     init_params()

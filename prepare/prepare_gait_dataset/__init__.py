@@ -17,5 +17,8 @@ Date 	By 	Comments
 
 '''
 import os, logging, shutil, sys, math
-sys.path.append("/workspace/skeleton")
-os.environ["HYDRA_FULL_ERROR"] = "1"
+# sys.path.append("/workspace/skeleton")
+
+from main import * 
+from preprocess import * 
+from yolov8 import * 

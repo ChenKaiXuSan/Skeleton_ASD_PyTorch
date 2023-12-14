@@ -7,3 +7,6 @@ ultralytics
 
 # config hydra 
 hydra-core
+
+# for cross validation
+scikit-learn

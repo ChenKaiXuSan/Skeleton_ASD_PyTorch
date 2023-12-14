@@ -19,12 +19,16 @@ Date 	By 	Comments
 
 # %%
 
+import logging, json, shutil
+from pathlib import Path
+
 from torchvision.transforms import (
     Compose,
     Lambda,
     RandomCrop,
     Resize,
     RandomHorizontalFlip,
+    ToTensor,
 )
 from pytorchvideo.transforms import (
     ApplyTransformToKey,
@@ -41,7 +45,7 @@ from pytorch_lightning import LightningDataModule
 import os
 
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset, IterableDataset
 from pytorchvideo.data.clip_sampling import ClipSampler
 from pytorchvideo.data import make_clip_sampler
 
@@ -50,9 +54,11 @@ from pytorchvideo.data.labeled_video_dataset import (
     labeled_video_dataset,
 )
 
-from labeled_video_dataset import LabeledGaitVideoDataset, labeled_gait_video_dataset
+# from labeled_video_dataset import LabeledGaitVideoDataset, labeled_gait_video_dataset
+from gait_video_dataset import labeled_gait_video_dataset
 
 # %%
+
 
 def WalkDataset(
     data_path: str,
@@ -63,7 +69,6 @@ def WalkDataset(
     decode_audio: bool = False,
     decoder: str = "pyav",
 ) -> LabeledVideoDataset:
-
     return labeled_video_dataset(
         data_path,
         clip_sampler,
@@ -74,70 +79,27 @@ def WalkDataset(
         decoder,
     )
 
-def WalkGaitDataset(
-    data_path: str,
-    clip_sampler: ClipSampler,
-    video_sampler: Type[torch.utils.data.Sampler] = torch.utils.data.RandomSampler,
-    transform: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None,
-    video_path_prefix: str = "",
-    decode_audio: bool = False,
-    decoder: str = "pyav",
-    yolo_config: Dict = None,
-) -> LabeledVideoDataset:
-
-    return labeled_gait_video_dataset(
-        data_path,
-        clip_sampler,
-        video_sampler,
-        transform,
-        video_path_prefix,
-        decode_audio,
-        decoder,
-        yolo_config
-    )
-
-# %%
-
 
 class WalkDataModule(LightningDataModule):
-    def __init__(self, opt):
+    def __init__(self, opt, dataset_idx: Dict = None):
         super().__init__()
+
         self._DATA_PATH = opt.data.data_path
         self._TARIN_PATH = opt.train.train_path
+
+        self._seg_path = opt.data.seg_data_path
+        self._gait_seg_path = opt.data.gait_seg_data_path
 
         self._BATCH_SIZE = opt.train.batch_size
         self._NUM_WORKERS = opt.data.num_workers
         self._IMG_SIZE = opt.data.img_size
 
-        self._yolo_config = opt
-
         # frame rate
         self._CLIP_DURATION = opt.train.clip_duration
         self.uniform_temporal_subsample_num = opt.train.uniform_temporal_subsample_num
 
-        # self.train_transform = Compose(
-        #     [
-        #         ApplyTransformToKey(
-        #             key="video",
-        #             transform=Compose(
-        #                 [
-        #                     # uniform clip T frames from the given n sec video.
-        #                     UniformTemporalSubsample(
-        #                         self.uniform_temporal_subsample_num
-        #                     ),
-        #                     # dived the pixel from [0, 255] tp [0, 1], to save computing resources.
-        #                     Div255(),
-        #                     # Normalize((0.45, 0.45, 0.45), (0.225, 0.225, 0.225)),
-        #                     # RandomShortSideScale(min_size=256, max_size=320),
-        #                     # RandomCrop(self._IMG_SIZE),
-        #                     # ShortSideScale(self._IMG_SIZE),
-        #                     Resize(size=[self._IMG_SIZE, self._IMG_SIZE]),
-        #                     RandomHorizontalFlip(p=0.5),
-        #                 ]
-        #             ),
-        #         ),
-        #     ]
-        # )
+        # * this is the dataset idx, which include the train/val dataset idx.
+        self._dataset_idx = dataset_idx
 
         self.train_transform = Compose(
             [
@@ -155,6 +117,9 @@ class WalkDataModule(LightningDataModule):
                         [
                             Div255(),
                             Resize(size=[self._IMG_SIZE, self._IMG_SIZE]),
+                            UniformTemporalSubsample(
+                                self.uniform_temporal_subsample_num
+                            ),
                         ]
                     ),
                 ),
@@ -162,7 +127,36 @@ class WalkDataModule(LightningDataModule):
         )
 
     def prepare_data(self) -> None:
-        pass
+        
+        """here prepare the temp val data path, 
+        because the val dataset not use the gait cycle index, 
+        so we directly use the pytorchvideo API to load the video.
+        AKA, use whole video to validate the model.
+        """        
+
+        temp_val_path = Path(self._seg_path) / "val_temp"
+        val_idx = self._dataset_idx[1]
+
+        shutil.rmtree(temp_val_path, ignore_errors=True)
+
+        for disease, p in val_idx.items():
+            class_path = temp_val_path / disease
+            class_path.mkdir(parents=True, exist_ok=True)
+
+            # load json file
+            # load the video tensor from json file
+            for _p in p:
+                with open(_p) as f:
+                    file_info_dict = json.load(f)
+
+                # load video info from json file
+                video_name = file_info_dict["video_name"]
+                video_path = file_info_dict["video_path"]
+
+                # copy the video to the temp val path, this is the json file.
+                shutil.copy(video_path, class_path / (video_name + ".mp4"))
+
+        self.temp_val_path = temp_val_path
 
     def setup(self, stage: Optional[str] = None) -> None:
         """
@@ -176,40 +170,54 @@ class WalkDataModule(LightningDataModule):
         print("run pre process model!", self._TARIN_PATH)
         print("#" * 100)
 
-        # if stage == "fit" or stage == None:
         if stage in ("fit", None):
-            # self.train_dataset = WalkDataset(
-            #     data_path=os.path.join(self._TARIN_PATH, "train"),
-            #     clip_sampler=make_clip_sampler("random", self._CLIP_DURATION),
-            #     transform=self.train_transform,
-            # )
-
-            self.train_gait_dataset = WalkGaitDataset(
-                data_path=os.path.join(self._TARIN_PATH, "train"),
-                clip_sampler=make_clip_sampler("random", self._CLIP_DURATION),
+            # * labeled dataset, where first define the giat cycle, and from .json file to load the video.
+            # * here only need dataset idx, mean first split the dataset, and then load the video.
+            self.train_gait_dataset = labeled_gait_video_dataset(
+                dataset_idx=self._dataset_idx[0],  # [train, val]
                 transform=self.train_transform,
-                yolo_config = self._yolo_config
             )
 
         if stage in ("fit", "validate", None):
-            # self.val_dataset = WalkDataset(
-            #     data_path=os.path.join(self._TARIN_PATH, "val"),
-            #     clip_sampler=make_clip_sampler("uniform", self._CLIP_DURATION),
-            #     transform=self.train_transform,
-            # )
-
+            # * the val dataset, do not apply the gait cycle, just load the whole video.
             self.val_gait_dataset = WalkDataset(
-                data_path=os.path.join(self._TARIN_PATH, "val"),
+                data_path=self.temp_val_path,
+                # data_path=os.path.join(self._seg_path, "val"), # maybe have data leakage
                 clip_sampler=make_clip_sampler("uniform", self._CLIP_DURATION),
                 transform=self.val_transform,
             )
 
-        # if stage in ("predict", "test", None):
-        #     self.test_pred_dataset = WalkDataset(
-        #         data_path=os.path.join(self._TARIN_PATH, "val"),
-        #         clip_sampler=make_clip_sampler("uniform", self._CLIP_DURATION),
-        #         transform=self.train_transform,
-        #     )
+    def collate_fn(self, batch):
+        """this function process the batch data, and return the batch data.
+
+        Args:
+            batch (list): the batch from the dataset.
+            The batch include the one patient info from the json file.
+            Here we only cat the one patient video tensor, and label tensor.
+
+        Returns:
+            dict: {video: torch.tensor, label: torch.tensor, info: list}
+        """
+
+        batch_label = []
+        batch_video = []
+
+        for i in batch:
+            # logging.info(i['video'].shape)
+            gait_num, c, t, h, w = i["video"].shape
+
+            batch_video.append(i["video"])
+            for _ in range(gait_num):
+                batch_label.append(i["label"])
+
+        # video, b, c, t, h, w, which include the video frame from sample info
+        # label, b, which include the video frame from sample info
+        # sample info, the raw sample info from dataset
+        return {
+            "video": torch.cat(batch_video, dim=0),
+            "label": torch.tensor(batch_label),
+            "info": batch,
+        }
 
     def train_dataloader(self) -> DataLoader:
         """
@@ -222,8 +230,9 @@ class WalkDataModule(LightningDataModule):
             batch_size=self._BATCH_SIZE,
             num_workers=self._NUM_WORKERS,
             pin_memory=True,
-            shuffle=False,
+            shuffle=True,
             drop_last=True,
+            collate_fn=self.collate_fn,
         )
 
     def val_dataloader(self) -> DataLoader:
@@ -233,21 +242,6 @@ class WalkDataModule(LightningDataModule):
         normalizes the video before applying the scale, crop and flip augmentations.
         """
 
-        return DataLoader(
-            self.val_gait_dataset,
-            batch_size=self._BATCH_SIZE,
-            num_workers=self._NUM_WORKERS,
-            pin_memory=True,
-            shuffle=False,
-            drop_last=True,
-        )
-
-    def test_dataloader(self) -> DataLoader:
-        """
-        create the Walk train partition from the list of video labels
-        in directory and subdirectory. Add transform that subsamples and
-        normalizes the video before applying the scale, crop and flip augmentations.
-        """
         return DataLoader(
             self.val_gait_dataset,
             batch_size=self._BATCH_SIZE,

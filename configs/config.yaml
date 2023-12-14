@@ -6,12 +6,12 @@ hydra:
 # group by defaults
 defaults:
   - optimizer: adam
-  - data: seg
+  - data: gait_seg
 
 model:
   model: "resnet"
   # img_size: 224
-  model_class_num: 1 # the class num of model
+  model_class_num: 3 # the class num of model
   model_depth: 50 # choices=[50, 101, 152], help='the depth of used model'
 
 YOLO:
@@ -36,7 +36,7 @@ train:
   train_path: ""
 
   version: "${model.model}" # the version of logger, such data
-  log_path: "/workspace/skeleton/logs/${model.model}/${now:%Y-%m-%d}/${now:%H-%M-%S}/${train.clip_duration}_${train.uniform_temporal_subsample_num}_${model.model_depth}"
+  log_path: "/workspace/skeleton/logs/${model.model}/${now:%Y-%m-%d}/${now:%H-%M-%S}/${train.uniform_temporal_subsample_num}_${model.model_depth}"
 
   fast_dev_run: False # if use the fast_dev_run
-  fold: 0 # the fold of the cross validation
+  fold: 5 # the fold number of the cross validation

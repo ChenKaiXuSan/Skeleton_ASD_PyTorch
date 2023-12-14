@@ -10,7 +10,7 @@ This is used for define the one gait cycle from video.
  
 Have a good code time!
 -----
-Last Modified: Monday October 30th 2023 6:50:52 am
+Last Modified: Sunday September 3rd 2023 1:44:00 pm
 Modified By: the developer formerly known as Kaixu Chen at <chenkaixusan@gmail.com>
 -----
 HISTORY:
@@ -22,7 +22,6 @@ Date 	By 	Comments
 
 import shutil, logging
 from pathlib import Path
-from typing import Any
 
 import torch  
 import torch.nn as nn 
@@ -30,8 +29,7 @@ import torch.nn.functional as F
 from torchvision.io import write_png
 from torchvision.utils import flow_to_image
 
-# from optical_flow import OpticalFlow
-from prepare.prepare_gait_dataset.yolov8 import  MultiPreprocess
+from yolov8 import MultiPreprocess
 
 class Preprocess(nn.Module):
 
@@ -104,7 +102,7 @@ class Preprocess(nn.Module):
 
     def forward(self, batch: torch.tensor, labels: list, batch_idx: int):
         """
-        forward preprocess method for one batch, use yolo and RAFT.
+        forward preprocess method for one batch.
 
         Args:
             batch (torch.tensor): batch imgs, (b, c, t, h, w)
@@ -112,26 +110,15 @@ class Preprocess(nn.Module):
             batch_idx (int): epoch index.
 
         Returns:
-            list: list for different moddailty, return optical flow, mask, and pose keypoints.
+            list: list for different moddailty, return video, bbox_non_index, labels, bbox, mask, pose
         """
                 
         b, c, t, h, w = batch.shape
 
         # process mask, pose
-        video, labels, bbox, mask, pose = self.yolo_model(batch, labels)
+        video, bbox_none_index, labels, bbox, mask, pose = self.yolo_model(batch, labels)
 
         # shape check
         self.shape_check([video, labels, mask, bbox, pose])
-
-        # self.save_img(mask, flag='mask', epoch_idx=batch_idx)
-
-        # process optical flow
-        # optical_flow = self.of_model(video)
         
-        # shape check
-        # self.shape_check([video, optical_flow])
-
-        # self.save_img(optical_flow, flag='optical_flow', epoch_idx=batch_idx)
-        
-        # return video, labels, optical_flow, bbox, mask, pose
-        return video, labels, None, bbox, mask, pose
+        return video, bbox_none_index, labels, None, bbox, mask, pose

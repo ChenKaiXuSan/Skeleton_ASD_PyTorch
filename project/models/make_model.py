@@ -1,20 +1,23 @@
+#!/usr/bin/env python3
+# -*- coding:utf-8 -*-
 '''
-File: make_model.py
-Project: models
-Created Date: 2023-10-19 02:33:46
-Author: chenkaixu
+File: /workspace/skeleton/project/models/make_model.py
+Project: /workspace/skeleton/project/models
+Created Date: Thursday October 19th 2023
+Author: Kaixu Chen
 -----
 Comment:
- 
-Have a good code time!
+
+Have a good code time :)
 -----
-Last Modified: 2023-10-19 02:34:31
-Modified By: chenkaixu
+Last Modified: Thursday October 19th 2023 2:33:46 am
+Modified By: the developer formerly known as Kaixu Chen at <chenkaixusan@gmail.com>
+-----
+Copyright (c) 2023 The University of Tsukuba
 -----
 HISTORY:
-Date 	By 	Comments
-------------------------------------------------
-
+Date      	By	Comments
+----------	---	---------------------------------------------------------
 '''
 
 # %%

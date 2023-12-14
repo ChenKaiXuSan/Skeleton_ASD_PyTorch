@@ -10,6 +10,7 @@ YOLO:
   conf: 0.8
   iou: 0.5
   verbose: False
+  device: 0
 
 # Path
 # step1: from raw video to extracted video.
@@ -25,4 +26,5 @@ gait_dataset:
   gait_cycle_split: 2 # define the gait cycle split number.  
   define_part: "left_ankle"
 
+log_path: "${gait_dataset.data_path}/json/log/"
 
