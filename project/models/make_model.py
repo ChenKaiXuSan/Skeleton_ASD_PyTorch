@@ -70,7 +70,7 @@ class MakeVideoModule(nn.Module):
         if self.transfor_learning:
             # x3d l model, param 6.15 with 16 frames. more smaller maybe more faster.
             # top1 acc is 77.44
-            model = torch.hub.load("facebookresearch/pytorchvideo:main", model='x3d_m', pretrained=True)
+            model = torch.hub.load("facebookresearch/pytorchvideo:main", model='x3d_l', pretrained=True)
             model.blocks[0].conv.conv_t = nn.Conv3d(
                 in_channels=input_channel, 
                 out_channels=24,

@@ -26,20 +26,11 @@ import logging, sys, json
 
 sys.path.append("/workspace/skeleton")
 
-from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union, Type
 
 import torch
-import torch.utils.data
 
 from torchvision.io import read_video
-
-from sklearn.model_selection import StratifiedGroupKFold, train_test_split
-
-from pytorchvideo.data.video import Video, VideoPathHandler
-from pytorchvideo.data.clip_sampling import ClipSampler
-from pytorchvideo.data.labeled_video_paths import LabeledVideoPaths
-from pytorchvideo.data.utils import MultiProcessSampler
 
 logger = logging.getLogger(__name__)
 
@@ -52,21 +43,8 @@ class LabeledGaitVideoDataset(torch.utils.data.Dataset):
         super().__init__()
 
         self._transform = transform
-        self._labeled_videos = self.convert_dict_to_list(labeled_video_paths)
+        self._labeled_videos = labeled_video_paths
 
-        self._video_sampler_iter = None  # Initialized on first call to self.__next__()
-
-    @staticmethod
-    def convert_dict_to_list(labeled_video_path):
-        ans_list = []
-
-        # in load case, we do not need to split the disease.
-        for disease, video_path in labeled_video_path.items():
-            for i in video_path:
-                ans_list.append(i)
-
-        return ans_list
-    
     @staticmethod
     def split_gait_cycle(video_tensor: torch.Tensor, gait_cycle_index: list):
         # TODO: 这个方法需要可以区别不同的步行周期

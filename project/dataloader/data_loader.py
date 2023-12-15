@@ -19,7 +19,7 @@ Date 	By 	Comments
 
 # %%
 
-import logging, json, shutil
+import logging, json, shutil, os
 from pathlib import Path
 
 from torchvision.transforms import (
@@ -42,42 +42,13 @@ from pytorchvideo.transforms import (
 
 from typing import Any, Callable, Dict, Optional, Type
 from pytorch_lightning import LightningDataModule
-import os
 
 import torch
-from torch.utils.data import DataLoader, Dataset, IterableDataset
-from pytorchvideo.data.clip_sampling import ClipSampler
+from torch.utils.data import DataLoader
 from pytorchvideo.data import make_clip_sampler
+from pytorchvideo.data.labeled_video_dataset import labeled_video_dataset
 
-from pytorchvideo.data.labeled_video_dataset import (
-    LabeledVideoDataset,
-    labeled_video_dataset,
-)
-
-# from labeled_video_dataset import LabeledGaitVideoDataset, labeled_gait_video_dataset
 from gait_video_dataset import labeled_gait_video_dataset
-
-# %%
-
-
-def WalkDataset(
-    data_path: str,
-    clip_sampler: ClipSampler,
-    video_sampler: Type[torch.utils.data.Sampler] = torch.utils.data.RandomSampler,
-    transform: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None,
-    video_path_prefix: str = "",
-    decode_audio: bool = False,
-    decoder: str = "pyav",
-) -> LabeledVideoDataset:
-    return labeled_video_dataset(
-        data_path,
-        clip_sampler,
-        video_sampler,
-        transform,
-        video_path_prefix,
-        decode_audio,
-        decoder,
-    )
 
 
 class WalkDataModule(LightningDataModule):
@@ -127,34 +98,31 @@ class WalkDataModule(LightningDataModule):
         )
 
     def prepare_data(self) -> None:
-        
-        """here prepare the temp val data path, 
-        because the val dataset not use the gait cycle index, 
+        """here prepare the temp val data path,
+        because the val dataset not use the gait cycle index,
         so we directly use the pytorchvideo API to load the video.
         AKA, use whole video to validate the model.
-        """        
+        """
 
         temp_val_path = Path(self._seg_path) / "val_temp"
         val_idx = self._dataset_idx[1]
 
         shutil.rmtree(temp_val_path, ignore_errors=True)
 
-        for disease, p in val_idx.items():
-            class_path = temp_val_path / disease
-            class_path.mkdir(parents=True, exist_ok=True)
+        for path in val_idx:
+            with open(path) as f:
+                file_info_dict = json.load(f)
 
-            # load json file
-            # load the video tensor from json file
-            for _p in p:
-                with open(_p) as f:
-                    file_info_dict = json.load(f)
+            video_name = file_info_dict["video_name"]
+            video_path = file_info_dict["video_path"]
+            video_disease = file_info_dict["disease"]
 
-                # load video info from json file
-                video_name = file_info_dict["video_name"]
-                video_path = file_info_dict["video_path"]
+            if not (temp_val_path / video_disease).exists():
+                (temp_val_path / video_disease).mkdir(parents=True, exist_ok=False)
 
-                # copy the video to the temp val path, this is the json file.
-                shutil.copy(video_path, class_path / (video_name + ".mp4"))
+            shutil.copy(
+                video_path, temp_val_path / video_disease / (video_name + ".mp4")
+            )
 
         self.temp_val_path = temp_val_path
 
@@ -180,9 +148,8 @@ class WalkDataModule(LightningDataModule):
 
         if stage in ("fit", "validate", None):
             # * the val dataset, do not apply the gait cycle, just load the whole video.
-            self.val_gait_dataset = WalkDataset(
+            self.val_gait_dataset = labeled_video_dataset(
                 data_path=self.temp_val_path,
-                # data_path=os.path.join(self._seg_path, "val"), # maybe have data leakage
                 clip_sampler=make_clip_sampler("uniform", self._CLIP_DURATION),
                 transform=self.val_transform,
             )
