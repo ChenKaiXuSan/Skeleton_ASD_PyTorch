@@ -56,8 +56,6 @@ class WalkDataModule(LightningDataModule):
         super().__init__()
 
         self._DATA_PATH = opt.data.data_path
-        self._TARIN_PATH = opt.train.train_path
-
         self._seg_path = opt.data.seg_data_path
         self._gait_seg_path = opt.data.gait_seg_data_path
 
@@ -104,27 +102,27 @@ class WalkDataModule(LightningDataModule):
         AKA, use whole video to validate the model.
         """
 
-        temp_val_path = Path(self._seg_path) / "val_temp"
-        val_idx = self._dataset_idx[1]
+        # temp_val_path = Path(self._seg_path) / "val_temp"
+        # val_idx = self._dataset_idx[1]
 
-        shutil.rmtree(temp_val_path, ignore_errors=True)
+        # shutil.rmtree(temp_val_path, ignore_errors=True)
 
-        for path in val_idx:
-            with open(path) as f:
-                file_info_dict = json.load(f)
+        # for path in val_idx:
+        #     with open(path) as f:
+        #         file_info_dict = json.load(f)
 
-            video_name = file_info_dict["video_name"]
-            video_path = file_info_dict["video_path"]
-            video_disease = file_info_dict["disease"]
+        #     video_name = file_info_dict["video_name"]
+        #     video_path = file_info_dict["video_path"]
+        #     video_disease = file_info_dict["disease"]
 
-            if not (temp_val_path / video_disease).exists():
-                (temp_val_path / video_disease).mkdir(parents=True, exist_ok=False)
+        #     if not (temp_val_path / video_disease).exists():
+        #         (temp_val_path / video_disease).mkdir(parents=True, exist_ok=False)
 
-            shutil.copy(
-                video_path, temp_val_path / video_disease / (video_name + ".mp4")
-            )
+        #     shutil.copy(
+        #         video_path, temp_val_path / video_disease / (video_name + ".mp4")
+        #     )
 
-        self.temp_val_path = temp_val_path
+        # self.temp_val_path = temp_val_path
 
     def setup(self, stage: Optional[str] = None) -> None:
         """
@@ -133,10 +131,6 @@ class WalkDataModule(LightningDataModule):
         Args:
             stage (Optional[str], optional): trainer.stage, in ('fit', 'validate', 'test', 'predict'). Defaults to None.
         """
-
-        print("#" * 100)
-        print("run pre process model!", self._TARIN_PATH)
-        print("#" * 100)
 
         if stage in ("fit", None):
             # * labeled dataset, where first define the giat cycle, and from .json file to load the video.
@@ -149,7 +143,7 @@ class WalkDataModule(LightningDataModule):
         if stage in ("fit", "validate", None):
             # * the val dataset, do not apply the gait cycle, just load the whole video.
             self.val_gait_dataset = labeled_video_dataset(
-                data_path=self.temp_val_path,
+                data_path=self._dataset_idx[1],
                 clip_sampler=make_clip_sampler("uniform", self._CLIP_DURATION),
                 transform=self.val_transform,
             )
@@ -209,6 +203,22 @@ class WalkDataModule(LightningDataModule):
         normalizes the video before applying the scale, crop and flip augmentations.
         """
 
+        return DataLoader(
+            self.val_gait_dataset,
+            batch_size=self._BATCH_SIZE,
+            num_workers=self._NUM_WORKERS,
+            pin_memory=True,
+            shuffle=False,
+            drop_last=True,
+        )
+    
+    def test_dataloader(self) -> DataLoader:
+        """
+        create the Walk train partition from the list of video labels
+        in directory and subdirectory. Add transform that subsamples and
+        normalizes the video before applying the scale, crop and flip augmentations.
+        """
+            
         return DataLoader(
             self.val_gait_dataset,
             batch_size=self._BATCH_SIZE,

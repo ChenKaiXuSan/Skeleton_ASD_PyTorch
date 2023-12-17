@@ -1,7 +1,7 @@
 # hydra config
 hydra:
   run:
-    dir: /workspace/skeleton/logs/${train.version}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    dir: /workspace/skeleton/logs/${model.model}/${now:%Y-%m-%d}/${now:%H-%M-%S}
 
 # group by defaults
 # defaults:
@@ -9,7 +9,7 @@ hydra:
 #   - data: gait_seg
 
 optimizer:
-  lr: 0.0001
+  lr: 0.001
   beta1: 0.5
   beta2: 0.999
 
@@ -17,6 +17,7 @@ data:
   data_path: /workspace/data/segmentation_dataset_512/
   seg_data_path: /workspace/data/segmentation_dataset_512/
   gait_seg_data_path: /workspace/data/segmentation_dataset_512/json
+  gait_seg_index_data_path: /workspace/data/gait_seg_index_dataset_512/
 
   num_workers: 4
   img_size: 224
@@ -24,7 +25,6 @@ data:
 
 model:
   model: "resnet"
-  # img_size: 224
   model_class_num: 3 # the class num of model
   model_depth: 50 # choices=[50, 101, 152], help='the depth of used model'
 
@@ -42,8 +42,8 @@ train:
   batch_size: 1 # batch size for the dataloader
 
   # used for val 
-  clip_duration: 0.3 # clip duration for the video
-  uniform_temporal_subsample_num: 8 # num frame from the clip duration, for define one gait cycle, we need use whole frames.
+  clip_duration: 0.5 # clip duration for the video
+  uniform_temporal_subsample_num: 16 # num frame from the clip duration, for define one gait cycle, we need use whole frames.
 
   gpu_num: 0 # choices=[0, 1], help='the gpu number whicht to train'
 

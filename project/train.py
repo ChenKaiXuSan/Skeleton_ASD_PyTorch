@@ -22,11 +22,13 @@ Date 	By 	Comments
 '''
 
 from typing import Any, List, Optional, Union
+from pytorch_lightning.utilities.types import STEP_OUTPUT
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
+
+import logging
 
 from pytorch_lightning import LightningModule
 
@@ -50,7 +52,7 @@ class GaitCycleLightningModule(LightningModule):
         self.num_classes = hparams.model.model_class_num
 
         # define model
-        self.video_cnn = MakeVideoModule(hparams).make_walk_resnet(3)
+        self.video_cnn = MakeVideoModule(hparams)()
 
         # save the hyperparameters to the file and ckpt
         self.save_hyperparameters()
@@ -143,6 +145,52 @@ class GaitCycleLightningModule(LightningModule):
             },
             on_epoch=True, on_step=True
         )
+
+    def test_step(self, batch: torch.Tensor, batch_idx: int):
+
+        # input and model define
+        video = batch["video"].detach()  # b, c, t, h, w
+        label = batch["label"].detach().float().squeeze()  # b
+
+        b, c, t, h, w = video.shape
+
+        video_preds = self.video_cnn(video)
+        video_preds_softmax = torch.softmax(video_preds, dim=1)
+
+        if b == 1:
+            label = label.unsqueeze(0)
+
+        # check shape 
+        assert label.shape[0] == b
+
+        loss = F.cross_entropy(video_preds, label.long())
+
+        self.log("val/loss", loss, on_epoch=True, on_step=True)
+
+        # log metrics
+        video_acc = self._accuracy(video_preds_softmax, label)
+        video_precision = self._precision(video_preds_softmax, label)
+        video_recall = self._recall(video_preds_softmax, label)
+        video_f1_score = self._f1_score(video_preds_softmax, label)
+        video_confusion_matrix = self._confusion_matrix(video_preds_softmax, label)
+
+        logging.info(f"video_acc: {video_acc}")
+        logging.info(f"video_precision: {video_precision}")
+        logging.info(f"video_recall: {video_recall}")
+        logging.info(f"video_f1_score: {video_f1_score}")
+        logging.info(f"video_confusion_matrix: {video_confusion_matrix}")
+
+        
+        # self.log_dict(
+        #     {
+        #         "val/video_acc": video_acc,
+        #         "val/video_precision": video_precision,
+        #         "val/video_recall": video_recall,
+        #         "val/video_f1_score": video_f1_score,
+        #     },
+        #     on_epoch=True, on_step=True
+        # )
+
 
     def configure_optimizers(self):
         """

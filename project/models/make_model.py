@@ -21,6 +21,7 @@ Date      	By	Comments
 '''
 
 # %%
+from typing import Any
 from pytorchvideo.models import x3d, resnet, csn, slowfast, r2plus1d
 
 import torch
@@ -39,9 +40,9 @@ class MakeVideoModule(nn.Module):
 
         super().__init__()
 
+        self.model_name = hparams.model.model
         self.model_class_num = hparams.model.model_class_num
         self.model_depth = hparams.model.model_depth
-
         self.transfor_learning = hparams.train.transfor_learning
 
     def make_walk_resnet(self, input_channel:int = 3) -> nn.Module:
@@ -70,7 +71,7 @@ class MakeVideoModule(nn.Module):
         if self.transfor_learning:
             # x3d l model, param 6.15 with 16 frames. more smaller maybe more faster.
             # top1 acc is 77.44
-            model = torch.hub.load("facebookresearch/pytorchvideo:main", model='x3d_l', pretrained=True)
+            model = torch.hub.load("facebookresearch/pytorchvideo:main", model='x3d_m', pretrained=True)
             model.blocks[0].conv.conv_t = nn.Conv3d(
                 in_channels=input_channel, 
                 out_channels=24,
@@ -95,3 +96,14 @@ class MakeVideoModule(nn.Module):
             )
 
         return model
+    
+    def __call__(self, *args: Any, **kwds: Any) -> Any:
+
+        if self.model_name == "resnet":
+            return self.make_walk_resnet()
+        elif self.model_name == "x3d":
+            return self.make_walk_x3d()
+        else:
+            raise KeyError(f"the model name {self.model_name} is not in the model zoo")
+
+        
