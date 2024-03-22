@@ -71,7 +71,7 @@ class GaitCycleLightningModule(LightningModule):
         # prepare the input and label
         video = batch["video"].detach()  # b, c, t, h, w
         label = batch["label"].detach().float().squeeze()  # b
-        sample_info = batch["info"] # b is the video instance number
+        # sample_info = batch["info"] # b is the video instance number
 
         b, c, t, h, w = video.shape
 

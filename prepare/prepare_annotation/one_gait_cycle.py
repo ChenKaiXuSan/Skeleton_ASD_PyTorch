@@ -9,7 +9,7 @@ Define one gait cycle in give video splitted.
 
 Have a good code time!
 -----
-Last Modified: Monday October 30th 2023 6:50:52 am
+Last Modified: Thursday October 26th 2023 5:13:10 am
 Modified By: the developer formerly known as Kaixu Chen at <chenkaixusan@gmail.com>
 -----
 HISTORY:

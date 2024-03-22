@@ -111,10 +111,13 @@ class DefineCrossValidation:
     """
 
     def __init__(self, config) -> None:
-        self.video_path = Path(config.data.gait_seg_data_path)
-        self.gait_seg_idx_path = Path(config.data.gait_seg_index_data_path)
+        
+        self.video_path = Path(config.data.gait_seg_data_path) # json file path
+        self.gait_seg_idx_path = Path(config.data.gait_seg_index_data_path) # used for training path mapping
         self.K = config.train.fold
-        self.sampler = config.data.sampling
+        self.sampler = config.data.sampling # data balance, [over, under, none]
+
+        self.class_num = config.model.model.class_num
 
     @staticmethod
     def random_sampler(X: list, y: list, train_idx: list, val_idx: list, sampler):
@@ -177,11 +180,11 @@ class DefineCrossValidation:
 
         return X, y, groups
 
-    def make_val_dataset(self, val_dataset_idx: list, fold: int):
-        temp_val_path = self.gait_seg_idx_path / self.sampler / str(fold)
+    def make_dataset_with_video(self, val_dataset_idx: list, fold: int, flag: str):
+        temp_path = self.gait_seg_idx_path / self.sampler / str(fold) / str(flag)
         val_idx = val_dataset_idx
 
-        shutil.rmtree(temp_val_path, ignore_errors=True)
+        shutil.rmtree(temp_path, ignore_errors=True)
 
         for path in val_idx:
             with open(path) as f:
@@ -191,14 +194,14 @@ class DefineCrossValidation:
             video_path = file_info_dict["video_path"]
             video_disease = file_info_dict["disease"]
 
-            if not (temp_val_path / video_disease).exists():
-                (temp_val_path / video_disease).mkdir(parents=True, exist_ok=False)
+            if not (temp_path / video_disease).exists():
+                (temp_path / video_disease).mkdir(parents=True, exist_ok=False)
 
             shutil.copy(
-                video_path, temp_val_path / video_disease / (video_name + ".mp4")
+                video_path, temp_path / video_disease / (video_name + ".mp4")
             )
 
-        return temp_val_path
+        return temp_path
 
     def prepare(self):
         """define cross validation first, with the K.
@@ -217,6 +220,9 @@ class DefineCrossValidation:
         ans_fold = {}
 
         # define the cross validation
+        # X: video path, in path.Path foramt. len = 1954
+        # y: label, in list format. len = 1954, three type > [0, 1, 2]
+        # groups: different patient, in list format. It means unique patient index. [54]
         X, y, groups = self.process_cross_validation(self.video_path)
 
         sgkf = StratifiedGroupKFold(n_splits=K)
@@ -239,14 +245,16 @@ class DefineCrossValidation:
                 val_mapped_path = [X[i] for i in test_index]
 
             # make the val data path
-            val_mapped_path = self.make_val_dataset(val_mapped_path, i)
+            train_video_path = self.make_dataset_with_video(train_mapped_path, i, "train")
+            val_video_path = self.make_dataset_with_video(val_mapped_path, i, "val")
 
-            ans_fold[i] = [train_mapped_path, val_mapped_path]
+            ans_fold[i] = [train_mapped_path, train_video_path, val_video_path]
 
         return ans_fold, X, y, groups
 
     def __call__(self, *args: Any, **kwds: Any) -> Any:
 
+        # when json file changed, need to reprocess the dataset.
         if not os.path.exists(self.gait_seg_idx_path/ self.sampler):
             fold_dataset_idx, *_ = self.prepare()
 
@@ -254,14 +262,18 @@ class DefineCrossValidation:
 
             for k, v in fold_dataset_idx.items():
                 
-                # train
-                train_dataset_idx = v[0]
+                # train mapping path, include the gait cycle index
+                train_mapping_idx = v[0]
 
-                json_fold_dataset_idx[k][0] = [str(i) for i in train_dataset_idx]
+                json_fold_dataset_idx[k][0] = [str(i) for i in train_mapping_idx]
 
-                # val
-                val_dataset_idx = v[1]
-                json_fold_dataset_idx[k][1] = str(val_dataset_idx)
+                # train video path
+                train_video_idx = v[1]
+                json_fold_dataset_idx[k][1] = str(train_video_idx)
+
+                # val video path
+                val_dataset_idx = v[2]
+                json_fold_dataset_idx[k][2] = str(val_dataset_idx)
 
             with open((self.gait_seg_idx_path / self.sampler / "index.json"), "w") as f:
                 json.dump(json_fold_dataset_idx, f)
@@ -271,14 +283,19 @@ class DefineCrossValidation:
             with open(self.gait_seg_idx_path / self.sampler / "index.json", "r") as f:
                 fold_dataset_idx = json.load(f)
 
+            # unpack the 
             for k, v in fold_dataset_idx.items():
-                # train
-                train_dataset_idx = v[0]
-                fold_dataset_idx[k][0] = [Path(i) for i in train_dataset_idx]
+                # train mapping, include the gait cycle index
+                train_mapping_idx = v[0]
+                fold_dataset_idx[k][0] = [Path(i) for i in train_mapping_idx]
+
+                # train video path
+                train_video_idx = v[1]
+                fold_dataset_idx[k][1] = Path(train_video_idx)
 
                 # val
-                val_dataset_idx = v[1]
-                fold_dataset_idx[k][1] = Path(val_dataset_idx)
+                val_dataset_idx = v[2]
+                fold_dataset_idx[k][2] = Path(val_dataset_idx)
                 
         else:
             raise ValueError(

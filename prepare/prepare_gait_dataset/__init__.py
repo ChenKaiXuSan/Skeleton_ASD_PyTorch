@@ -8,7 +8,7 @@ Comment:
  
 Have a good code time!
 -----
-Last Modified: Monday October 30th 2023 6:56:12 am
+Last Modified: Sunday September 3rd 2023 1:13:52 pm
 Modified By: the developer formerly known as Kaixu Chen at <chenkaixusan@gmail.com>
 -----
 HISTORY:
@@ -20,5 +20,5 @@ import os, logging, shutil, sys, math
 # sys.path.append("/workspace/skeleton")
 
 from main import * 
-from preprocess import * 
+from prepare.prepare_gait_dataset.preprocess import * 
 from yolov8 import * 

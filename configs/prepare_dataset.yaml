@@ -13,7 +13,7 @@ YOLO:
   device: 0
 
 # Path
-# step1: from raw video to extracted video.
+# step1: from raw video to extract video.
 # use YOLOv8 detection with tracking.
 extract_dataset:
   data_path: ""
@@ -27,4 +27,4 @@ gait_dataset:
   define_part: "left_ankle"
 
 log_path: "${gait_dataset.data_path}/json/log/"
-
+method: 'bbox' # bbox or OF

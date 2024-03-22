@@ -58,6 +58,7 @@ class WalkDataModule(LightningDataModule):
         self._DATA_PATH = opt.data.data_path
         self._seg_path = opt.data.seg_data_path
         self._gait_seg_path = opt.data.gait_seg_data_path
+        self.gait_cycle = opt.train.gait_cycle
 
         self._BATCH_SIZE = opt.train.batch_size
         self._NUM_WORKERS = opt.data.num_workers
@@ -70,7 +71,9 @@ class WalkDataModule(LightningDataModule):
         # * this is the dataset idx, which include the train/val dataset idx.
         self._dataset_idx = dataset_idx
 
-        self.train_transform = Compose(
+        self._temporal_mix = opt.train.temporal_mix
+
+        self.train_mapping_transform = Compose(
             [
                 UniformTemporalSubsample(self.uniform_temporal_subsample_num),
                 Div255(),
@@ -78,7 +81,21 @@ class WalkDataModule(LightningDataModule):
             ]
         )
 
-        self.val_transform = Compose(
+        self.train_video_transform = Compose(
+            [
+                ApplyTransformToKey(
+                    key="video", 
+                    transform=Compose(
+                        [
+                            Div255(),
+                            Resize(size=[self._IMG_SIZE, self._IMG_SIZE]),
+                            UniformTemporalSubsample(self.uniform_temporal_subsample_num),
+                        ])
+                ),
+            ]
+        )
+
+        self.val_video_transform = Compose(
             [
                 ApplyTransformToKey(
                     key="video",
@@ -133,19 +150,38 @@ class WalkDataModule(LightningDataModule):
         """
 
         if stage in ("fit", None):
-            # * labeled dataset, where first define the giat cycle, and from .json file to load the video.
-            # * here only need dataset idx, mean first split the dataset, and then load the video.
-            self.train_gait_dataset = labeled_gait_video_dataset(
-                dataset_idx=self._dataset_idx[0],  # [train, val]
-                transform=self.train_transform,
-            )
+            # judge if use split the gait cycle, or use the whole video.
+            if self.gait_cycle == -1:
+                self.train_gait_dataset = labeled_video_dataset(
+                    data_path=self._dataset_idx[1],
+                    clip_sampler=make_clip_sampler("uniform", self._CLIP_DURATION),
+                    transform=self.train_video_transform,
+                )
+
+            else:
+                # * labeled dataset, where first define the giat cycle, and from .json file to load the video.
+                # * here only need dataset idx, mean first split the dataset, and then load the video.
+                self.train_gait_dataset = labeled_gait_video_dataset(
+                    gait_cycle = self.gait_cycle,
+                    dataset_idx=self._dataset_idx[0],  # [train, val]
+                    transform=self.train_mapping_transform,
+                    temporal_mix=self._temporal_mix
+                )
 
         if stage in ("fit", "validate", None):
             # * the val dataset, do not apply the gait cycle, just load the whole video.
             self.val_gait_dataset = labeled_video_dataset(
                 data_path=self._dataset_idx[1],
                 clip_sampler=make_clip_sampler("uniform", self._CLIP_DURATION),
-                transform=self.val_transform,
+                transform=self.val_video_transform,
+            )
+
+        if stage in ("test", None):
+            # * the test dataset, do not apply the gait cycle, just load the whole video.
+            self.test_gait_dataset = labeled_video_dataset(
+                data_path=self._dataset_idx[1],
+                clip_sampler=make_clip_sampler("uniform", self._CLIP_DURATION),
+                transform=self.val_video_transform,
             )
 
     def collate_fn(self, batch):
@@ -186,7 +222,18 @@ class WalkDataModule(LightningDataModule):
         in directory and subdirectory. Add transform that subsamples and
         normalizes the video before applying the scale, crop and flip augmentations.
         """
-        return DataLoader(
+        if self.gait_cycle == -1:
+            train_data_loader = DataLoader(
+                self.train_gait_dataset,
+                batch_size=self._BATCH_SIZE,
+                num_workers=self._NUM_WORKERS,
+                pin_memory=True,
+                shuffle=False,
+                drop_last=True,
+            )
+
+        else:
+            train_data_loader = DataLoader(
             self.train_gait_dataset,
             batch_size=self._BATCH_SIZE,
             num_workers=self._NUM_WORKERS,
@@ -195,6 +242,8 @@ class WalkDataModule(LightningDataModule):
             drop_last=True,
             collate_fn=self.collate_fn,
         )
+
+        return train_data_loader
 
     def val_dataloader(self) -> DataLoader:
         """
@@ -220,7 +269,7 @@ class WalkDataModule(LightningDataModule):
         """
             
         return DataLoader(
-            self.val_gait_dataset,
+            self.test_gait_dataset,
             batch_size=self._BATCH_SIZE,
             num_workers=self._NUM_WORKERS,
             pin_memory=True,

@@ -48,7 +48,7 @@ logging.basicConfig(
 import hydra
 
 from project.utils import del_folder, make_folder
-from preprocess import Preprocess
+from prepare.prepare_gait_dataset.preprocess import Preprocess
 
 RAW_CLASS = ["ASD", "DHS", "LCS", "HipOA"]
 CLASS = ["ASD", "DHS", "LCS_HipOA", "Normal"]
@@ -56,21 +56,14 @@ map_CLASS = {"ASD": 0, "DHS": 1, "LCS_HipOA": 2, "Normal": 3}  # map the class t
 VIEW = ["right", "left", "front", "back"]
 FOLD = ["fold0", "fold1", "fold2", "fold3", "fold4"]
 
-def get_gait_cycle_from_bbox(bbox: torch.Tensor):
-    """predict the gait cycle from bbox.
-    use the max width bbox as the gait cycle frame index.
-    The motivation is that the max width bbox is the most complete bbox in the video.
+def gait_cycle_index_visualization(frames: torch.Tensor, gait_cycle_index: list, keypoint: torch.Tensor, bbox: torch.Tensor):
+    pass
 
-    Args:
-        bbox (torch.Tensor): bbox from the video, shape is [b, t, xywh]
-
-    Returns:
-        list: the gait cycle frame index,.
-    """
-
+def process_bbox(bbox: torch.Tensor):
     # find min and max bbox weight
     b, t, xywh = bbox.shape
 
+    # * get the gait cycle index with bbox width
     bias = 50  # pixel value
     threshold = 10
 
@@ -94,19 +87,119 @@ def get_gait_cycle_from_bbox(bbox: torch.Tensor):
                 ans.append(f)
 
     # filter close values
-    res = [0]
+    bbox_res = [0]
 
     for i in range(len(ans)):
-        if not res:
-            res.append(ans[i])
+        if not bbox_res:
+            bbox_res.append(ans[i])
         else:
-            if abs(ans[i] - res[-1]) > threshold:
-                res.append(ans[i])
+            if abs(ans[i] - bbox_res[-1]) > threshold:
+                bbox_res.append(ans[i])
 
-    res.append(t)  # add the last frame index
+    bbox_res.append(t)  # add the last frame index
+
     # return the max width frame index
-    return res
+    return bbox_res
 
+def process_keypoint(pose: torch.Tensor, frames: torch.Tensor):
+
+    # * get the gait cycle index with pose keypoint
+    b, t, point_num, coordinate = pose.shape
+    b, c, t, h, w = frames.shape
+
+    bias = 50  # pixel value
+    threshold = 10
+
+    foot_max_width = float("-inf")
+    foot_ans = []
+
+    for batch in range(b):
+        # b, t, 17, 2
+        # find the max width of foot coordinate
+        for f in range(t):
+            foot_coordinate = pose[batch, f, -2:].t() # x, y > y, x
+
+            # fine the max width of foot width
+            width = abs(foot_coordinate[0][0] - foot_coordinate[0][1]) * h
+            if width > foot_max_width:
+                foot_max_width = width
+
+        # find the min bias between the foot width and the max width
+        # it means the index is the gait cycle index        
+        for f in range(t):
+
+            foot_coordinate = pose[batch, f, -2:].t() # x, y > y, x
+            foot_width = abs(foot_coordinate[0][0] - foot_coordinate[0][1]) * h
+
+            if abs(foot_width - foot_max_width) < bias:
+                foot_ans.append(f)
+            
+    # filter close values
+    foot_res = [0]
+
+    for i in range(len(foot_ans)):
+        if not foot_res:
+            foot_res.append(foot_ans[i])
+        else:
+            if abs(foot_ans[i] - foot_res[-1]) > threshold:
+                foot_res.append(foot_ans[i])
+
+    # return the inde by foot width
+    return foot_res
+
+def get_gait_cycle_from_bbox_keypoint(frames: torch.Tensor, bbox: torch.Tensor, pose: torch.Tensor):
+    """predict the gait cycle from bbox.
+    use the max width bbox as the gait cycle frame index.
+    The motivation is that the max width bbox is the most complete bbox in the video.
+
+    Args:
+        bbox (torch.Tensor): bbox from the video, shape is [b, t, xywh]
+
+    Returns:
+        list: the gait cycle frame index,.
+    """
+
+    bbox_gait_index = process_bbox(bbox)
+    keypoint_gait_index = process_keypoint(pose, frames)
+
+    # compare the final result between bbox and keypoint
+    if len(bbox_gait_index) == len(keypoint_gait_index):
+        final_gait_index = bbox_gait_index
+    elif len(bbox_gait_index) > len(keypoint_gait_index):
+        final_gait_index = bbox_gait_index
+    elif len(bbox_gait_index) < len(keypoint_gait_index):
+        final_gait_index = keypoint_gait_index
+
+    return final_gait_index
+
+def get_gait_cycle_from_OF_segmentation(frames: torch.Tensor, optical_flow: torch.Tensor):
+    """the key point is, how to find the ffot pixel value in the video.
+
+    Args:
+        frames (torch.Tensor): the frame tensor.
+        optical_flow (torch.Tensor): the optical flow tensor.
+    """    
+    b, c, f, h, w = frames.shape
+
+    for i in range(f):
+        tmp_frame = torch.sum(frames[0, :, i, :, :], dim=0, dtype=torch.uint8) # h, w
+        # ! save pixel value 
+        write_png(tmp_frame.unsqueeze(dim=0), f"/workspace/skeleton/prepare/prepare_gait_dataset/pixel_value/{i}.png")
+
+        # * step1 find the bottom pixel value 
+        # bottom_pixel = torch.sum(tmp_frame, dim=1)
+        # for j in range(h-1, 0, -1):
+        #     if bottom_pixel[j] > 0:
+        #         bottom_pixel_index = j # ! 现在可以找到最下面的像素点的位置。但是这个并不是两只脚的位置，而是求和之后的像素位置
+        #         break
+        foot_location = []
+
+        for i in range(h-1, h-128, -1):
+            for j in range(w):
+                if tmp_frame[i, j] > 0:
+                    foot_location.append((i, j))
+                    
+        print(foot_location)
 
 class LoadOneDisese:
     def __init__(self, data_path, fold, disease) -> None:
@@ -218,12 +311,15 @@ def process(parames, fold: str, disease: list):
             vframes, audio, _ = read_video(
                 video_path, pts_unit="sec", output_format="TCHW"
             )
-            # * step3: use preprocess to get the bbox
+
+            # * step3: use preprocess to get information.
+            # the format is: final_frames, bbox_none_index, label, optical_flow, bbox, mask, pose
+
             label = torch.tensor([map_CLASS[k]])  # convert the label to int
             # TCHW > CTHW > BCTHW
             m_vframes = vframes.permute(1, 0, 2, 3).unsqueeze(0)
             (
-                final_frames,
+                frames,
                 bbox_none_index,
                 label,
                 optical_flow,
@@ -233,7 +329,10 @@ def process(parames, fold: str, disease: list):
             ) = preprocess(m_vframes, label, 0)
 
             # * step4: use bbox to define the gait cycle, and get the gait cycle index
-            gait_cycle_index_bbox = get_gait_cycle_from_bbox(bbox)
+            if parames.method == "bbox":
+                gait_cycle_index = get_gait_cycle_from_bbox_keypoint(frames, bbox, pose)
+            elif parames.method == "OF":
+                gait_cycle_index = get_gait_cycle_from_OF_segmentation(frames, optical_flow)
 
             # * step5: save the video frames to json file
             sample_json_info = {
@@ -242,8 +341,8 @@ def process(parames, fold: str, disease: list):
                 "frame_count": vframes.shape[0],
                 "label": int(label),
                 "disease": k,
-                "gait_cycle_index_bbox": gait_cycle_index_bbox,
-                "bbox_none_index": bbox_none_index,
+                "gait_cycle_index": gait_cycle_index,
+                "none_index": bbox_none_index,
                 "bbox": [bbox[0, i].tolist() for i in range(bbox.shape[1])],
             }
 
@@ -267,18 +366,18 @@ def main(parames):
     parames.YOLO.device = "cuda:0"
     asd = multiprocessing.Process(target=process, args=(parames, "fold0", ["ASD"]))
     asd.start()
+
+    parames.YOLO.device = "cuda:1"
     LCS_HipOA = multiprocessing.Process(
         target=process, args=(parames, "fold0", ["LCS", "HipOA"])
     )
     LCS_HipOA.start()
 
-    parames.YOLO.device = "cuda:1"
     dhs = multiprocessing.Process(target=process, args=(parames, "fold0", ["DHS"]))
     dhs.start()
 
     # ! only for test
     # process(parames, "fold0", ["ASD"])
-
 
 if __name__ == "__main__":
     main()
