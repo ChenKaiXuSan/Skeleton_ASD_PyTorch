@@ -15,6 +15,8 @@ HISTORY:
 Date 	By 	Comments
 ------------------------------------------------
 
+22-03-2024	Kaixu Chen	add different class num mapping dict. In collate_fn, re-mapping the label from .json disease key.
+
 """
 
 # %%
@@ -50,12 +52,28 @@ from pytorchvideo.data.labeled_video_dataset import labeled_video_dataset
 
 from gait_video_dataset import labeled_gait_video_dataset
 
+disease_to_num_mapping_Dict: Dict = {
+    2: {
+        "ASD": 0,
+        "non-ASD": 1
+    },
+    3: {
+        "ASD": 0,
+        "DHS": 1,
+        "LCS_HipOA": 2
+    },
+    4: {
+        "ASD": 0,
+        "DHS": 1,
+        "LCS_HipOA": 2,
+        "normal": 3
+    }
+}
 
 class WalkDataModule(LightningDataModule):
     def __init__(self, opt, dataset_idx: Dict = None):
         super().__init__()
 
-        self._DATA_PATH = opt.data.data_path
         self._seg_path = opt.data.seg_data_path
         self._gait_seg_path = opt.data.gait_seg_data_path
         self.gait_cycle = opt.train.gait_cycle
@@ -70,6 +88,7 @@ class WalkDataModule(LightningDataModule):
 
         # * this is the dataset idx, which include the train/val dataset idx.
         self._dataset_idx = dataset_idx
+        self._class_num = opt.model.model_class_num
 
         self._temporal_mix = opt.train.temporal_mix
 
@@ -171,7 +190,7 @@ class WalkDataModule(LightningDataModule):
         if stage in ("fit", "validate", None):
             # * the val dataset, do not apply the gait cycle, just load the whole video.
             self.val_gait_dataset = labeled_video_dataset(
-                data_path=self._dataset_idx[1],
+                data_path=self._dataset_idx[2],
                 clip_sampler=make_clip_sampler("uniform", self._CLIP_DURATION),
                 transform=self.val_video_transform,
             )
@@ -179,7 +198,7 @@ class WalkDataModule(LightningDataModule):
         if stage in ("test", None):
             # * the test dataset, do not apply the gait cycle, just load the whole video.
             self.test_gait_dataset = labeled_video_dataset(
-                data_path=self._dataset_idx[1],
+                data_path=self._dataset_idx[2],
                 clip_sampler=make_clip_sampler("uniform", self._CLIP_DURATION),
                 transform=self.val_video_transform,
             )
@@ -199,13 +218,22 @@ class WalkDataModule(LightningDataModule):
         batch_label = []
         batch_video = []
 
+        # mapping label 
+
         for i in batch:
             # logging.info(i['video'].shape)
             gait_num, c, t, h, w = i["video"].shape
+            disease = i["disease"]
 
             batch_video.append(i["video"])
             for _ in range(gait_num):
-                batch_label.append(i["label"])
+                
+                if disease in disease_to_num_mapping_Dict[self._class_num].keys():
+
+                    batch_label.append(disease_to_num_mapping_Dict[self._class_num][disease])
+                else:
+                    # * if the disease not in the mapping dict, then set the label to non-ASD.
+                    batch_label.append(disease_to_num_mapping_Dict[self._class_num]['non-ASD'])
 
         # video, b, c, t, h, w, which include the video frame from sample info
         # label, b, which include the video frame from sample info

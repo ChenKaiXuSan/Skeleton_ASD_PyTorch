@@ -14,10 +14,9 @@ optimizer:
   beta2: 0.999
 
 data:
-  data_path: /workspace/data/segmentation_dataset_512/
-  seg_data_path: /workspace/data/segmentation_dataset_512/
-  gait_seg_data_path: /workspace/data/segmentation_dataset_512/json
-  gait_seg_index_data_path: /workspace/data/seg_gait_index_mapping/
+  seg_data_path: /workspace/data/segmentation_dataset_512/ # segmentation dataset path
+  gait_seg_data_path: /workspace/data/segmentation_dataset_512/json # defined gait cycle json path 
+  gait_seg_index_data_path: /workspace/data/seg_gait_index_mapping/ # training mapping path
 
   num_workers: 4
   img_size: 224
@@ -57,4 +56,4 @@ train:
   fast_dev_run: False # if use the fast_dev_run
   fold: 3 # the fold number of the cross validation
 
-  gait_cycle: 0 # [0, 1, -1]
+  gait_cycle: 0 # [0, 1, -1] swing phase, stance phase, random phase 
