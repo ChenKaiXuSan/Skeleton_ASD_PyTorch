@@ -130,4 +130,4 @@ MNIST
 
 /logs
 /ckpt
-/analysis
+/analysis/logs

@@ -21,15 +21,15 @@ Date      	By	Comments
 '''
 
 # %%
-from typing import Any
-from pytorchvideo.models import x3d, resnet, csn, slowfast, r2plus1d
+from typing import Any, List
 
 import torch
 import torch.nn as nn
-from torchvision.models import resnet50, ResNet50_Weights
+
+from pytorchvideo.models import x3d, resnet, slowfast
+from torchvision.models import resnet50, mobilenet_v3_large, efficientnet_v2_l, alexnet
 
 # %%
-
 class MakeVideoModule(nn.Module):
     '''
     the module zoo from the PytorchVideo lib, to make the different 3D model.
@@ -107,3 +107,19 @@ class MakeVideoModule(nn.Module):
             raise KeyError(f"the model name {self.model_name} is not in the model zoo")
 
         
+class MakeImageModule(nn.Module):
+    '''
+    the module zoo from the torchvision lib, to make the different 2D model.
+
+    '''
+
+    def __init__(self, hparams) -> None:
+
+        super().__init__()
+
+        self.model_name = hparams.model.model
+        self.model_class_num = hparams.model.model_class_num
+        self.transfor_learning = hparams.train.transfer_learning
+
+    def make_resnet(self, input_channel:int = 3) -> nn.Module:
+        ...

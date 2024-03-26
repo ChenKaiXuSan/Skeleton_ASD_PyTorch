@@ -104,7 +104,7 @@ class GaitCycleLightningModule(LightningModule):
                 "train/video_recall": video_recall,
                 "train/video_f1_score": video_f1_score,
             }, 
-            on_epoch=True, on_step=True
+            on_epoch=True, on_step=True, batch_size=b
         )
 
         return loss
@@ -145,7 +145,7 @@ class GaitCycleLightningModule(LightningModule):
                 "val/video_recall": video_recall,
                 "val/video_f1_score": video_f1_score,
             },
-            on_epoch=True, on_step=True
+            on_epoch=True, on_step=True, batch_size=b
         )
 
     def test_step(self, batch: torch.Tensor, batch_idx: int):
@@ -183,16 +183,23 @@ class GaitCycleLightningModule(LightningModule):
         logging.info(f"video_confusion_matrix: {video_confusion_matrix}")
 
         
-        # self.log_dict(
-        #     {
-        #         "val/video_acc": video_acc,
-        #         "val/video_precision": video_precision,
-        #         "val/video_recall": video_recall,
-        #         "val/video_f1_score": video_f1_score,
-        #     },
-        #     on_epoch=True, on_step=True
-        # )
+        self.log_dict(
+            {
+                "val/video_acc": video_acc,
+                "val/video_precision": video_precision,
+                "val/video_recall": video_recall,
+                "val/video_f1_score": video_f1_score,
+            },
+            on_epoch=True, on_step=True, batch_size=b
+        )
 
+        return {
+            "video_acc": video_acc,
+            "video_precision": video_precision,
+            "video_recall": video_recall,
+            "video_f1_score": video_f1_score,
+            "video_confusion_matrix": video_confusion_matrix,
+        }
 
     def configure_optimizers(self):
         """
