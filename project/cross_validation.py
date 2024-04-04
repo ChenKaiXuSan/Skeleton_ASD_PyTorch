@@ -225,7 +225,8 @@ class DefineCrossValidation(object):
             train_video_path = self.make_dataset_with_video(train_mapped_path, i, "train")
             val_video_path = self.make_dataset_with_video(val_mapped_path, i, "val")
 
-            ans_fold[i] = [train_mapped_path, train_video_path, val_video_path]
+            # * here used for gait labeled method, or load video from path
+            ans_fold[i] = [train_mapped_path, val_mapped_path, train_video_path, val_video_path]
 
         return ans_fold, X, y, groups
 
@@ -244,16 +245,18 @@ class DefineCrossValidation(object):
                 
                 # train mapping path, include the gait cycle index
                 train_mapping_idx = v[0]
-
                 json_fold_dataset_idx[k][0] = [str(i) for i in train_mapping_idx]
 
+                val_mapping_idx = v[1]
+                json_fold_dataset_idx[k][1] = [str(i) for i in val_mapping_idx]
+
                 # train video path
-                train_video_idx = v[1]
-                json_fold_dataset_idx[k][1] = str(train_video_idx)
+                train_video_idx = v[2]
+                json_fold_dataset_idx[k][2] = str(train_video_idx)
 
                 # val video path
-                val_dataset_idx = v[2]
-                json_fold_dataset_idx[k][2] = str(val_dataset_idx)
+                val_dataset_idx = v[3]
+                json_fold_dataset_idx[k][3] = str(val_dataset_idx)
 
             with open((self.gait_seg_idx_path / str(self.class_num) / self.sampler / "index.json"), "w") as f:
                 json.dump(json_fold_dataset_idx, f)
@@ -269,13 +272,17 @@ class DefineCrossValidation(object):
                 train_mapping_idx = v[0]
                 fold_dataset_idx[k][0] = [Path(i) for i in train_mapping_idx]
 
-                # train video path
-                train_video_idx = v[1]
-                fold_dataset_idx[k][1] = Path(train_video_idx)
+                # val mapping, include the gait cycle index 
+                val_mapping_idx = v[1]
+                fold_dataset_idx[k][1] = [Path(i) for i in val_mapping_idx]
 
-                # val
-                val_dataset_idx = v[2]
-                fold_dataset_idx[k][2] = Path(val_dataset_idx)
+                # train video path
+                train_video_idx = v[2]
+                fold_dataset_idx[k][2] = Path(train_video_idx)
+
+                # val video path
+                val_dataset_idx = v[3]
+                fold_dataset_idx[k][3] = Path(val_dataset_idx)
                 
         else:
             raise ValueError(

@@ -14,12 +14,16 @@ Modified By: the developer formerly known as Kaixu Chen at <chenkaixusan@gmail.c
 HISTORY:
 Date 	By 	Comments
 ------------------------------------------------
+
+04-04-2024	Kaixu Chen	add save inference method. now it can save the pred/label to the disk, for the further analysis.
 2023-10-29	KX.C	add the lr monitor, and fast dev run to trainer.
 
 """
 
 import os, logging
+from pathlib import Path
 from typing import Any
+import torch
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.loggers import TensorBoardLogger
 
@@ -37,6 +41,74 @@ from train import GaitCycleLightningModule
 
 import hydra
 from cross_validation import DefineCrossValidation
+
+
+def save_inference(config, model, dataloader, fold):
+
+    total_pred_list = []
+    total_label_list = []
+
+    dataloader.setup()
+    test_dataloader = dataloader.test_dataloader()
+
+    for i, batch in enumerate(test_dataloader):
+
+        pred_list = []
+        label_list = []
+
+        # input and label
+        video = (
+            batch["video"].detach().to(f"cuda:{config.train.gpu_num}")
+        )  # b, c, t, h, w
+        label = (
+            batch["label"].detach().to(f"cuda:{config.train.gpu_num}")
+        )  # b, class_num
+
+        model.eval().to(f"cuda:{config.train.gpu_num}")
+
+        # pred the video frames
+        with torch.no_grad():
+            preds = model(video)
+
+        # when torch.size([1]), not squeeze.
+        if preds.size()[0] != 1 or len(preds.size()) != 1:
+            preds = preds.squeeze(dim=-1)
+            preds_softmax = torch.softmax(preds, dim=1)
+        else:
+            preds_softmax = torch.softmax(preds, dim=1)
+
+        pred_list.append(preds_softmax.tolist())
+        label_list.append(label.tolist())
+
+        for i in pred_list:
+            for number in i:
+                total_pred_list.append(number)
+
+        for i in label_list:
+            for number in i:
+                total_label_list.append(number)
+
+    pred = torch.tensor(total_pred_list)
+    label = torch.tensor(total_label_list)
+
+    # save the results
+    torch.save(
+        pred,
+        Path(config.train.log_path)
+        / "best_preds"
+        / f"{config.model.model}_{config.data.sampling}_{fold}_pred.pt",
+    )
+    torch.save(
+        label,
+        Path(config.train.log_path)
+        / "best_preds"
+        / f"{config.model.model}_{config.data.sampling}_{fold}_label.pt",
+    )
+
+    logging.info(
+        f"save the pred and label into {Path(config.train.log_path)} / {config.model.model}_{config.data.sampler}_{fold}_pred.pt and {config.model.model}_{config.data.sampler}_{fold}_label.pt"
+    )
+
 
 def train(hparams, dataset_idx, fold):
     seed_everything(42, workers=True)
@@ -95,8 +167,9 @@ def train(hparams, dataset_idx, fold):
     trainer.fit(classification_module, data_module)
 
     # the validate method will wirte in the same log twice, so use the test method.
-    trainer.test(classification_module, data_module, ckpt_path="best")
+    # trainer.test(classification_module, data_module, ckpt_path="best")
 
+    return classification_module, data_module
 
 
 @hydra.main(
@@ -124,11 +197,13 @@ def init_params(config):
         logging.info("Start train fold: {}".format(fold))
         logging.info("#" * 50)
 
-        train(config, dataset_value, fold)
+        classification_module, data_module = train(config, dataset_value, fold)
 
         logging.info("#" * 50)
         logging.info("finish train fold: {}".format(fold))
         logging.info("#" * 50)
+
+        save_inference(config, classification_module, data_module, fold)
 
     logging.info("#" * 50)
     logging.info("finish train all fold")

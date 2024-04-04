@@ -320,6 +320,7 @@ def process(parames, fold: str, disease: list):
             ) = preprocess(m_vframes, label, 0)
 
             # * step4: use bbox to define the gait cycle, and get the gait cycle index
+            # TODO: mix的判断条件太简陋了，需要再优化一下。没有没更精确的判断方法。
             if parames.method == "mix":
                 gait_cycle_index = get_gait_cycle_from_bbox_keypoint(frames, bbox, pose)
             elif parames.method == "pose":

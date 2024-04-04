@@ -15,6 +15,8 @@ HISTORY:
 Date 	By 	Comments
 ------------------------------------------------
 
+04-04-2024	Kaixu Chen	when use temporal mix, need keep same data process method for train/val dataset.
+
 25-03-2024	Kaixu Chen	change batch size for train/val dataloader. Now set bs=1 for gait cycle dataset, set bs=32 for default dataset (without gait cycle).
 Because in experiment, I found bs=1 will have large loss when train. Maybe also need gait cycle datset in val/test dataloader?
 
@@ -53,7 +55,6 @@ disease_to_num_mapping_Dict: Dict = {
     4: {"ASD": 0, "DHS": 1, "LCS_HipOA": 2, "normal": 3},
 }
 
-
 class WalkDataModule(LightningDataModule):
     def __init__(self, opt, dataset_idx: Dict = None):
         super().__init__()
@@ -80,6 +81,14 @@ class WalkDataModule(LightningDataModule):
         self._temporal_mix = opt.train.temporal_mix
 
         self.train_mapping_transform = Compose(
+            [
+                UniformTemporalSubsample(self.uniform_temporal_subsample_num),
+                Div255(),
+                Resize(size=[self._IMG_SIZE, self._IMG_SIZE]),
+            ]
+        )
+
+        self.val_mapping_transform = Compose(
             [
                 UniformTemporalSubsample(self.uniform_temporal_subsample_num),
                 Div255(),
@@ -141,7 +150,7 @@ class WalkDataModule(LightningDataModule):
             # judge if use split the gait cycle, or use the whole video.
             if self.gait_cycle == -1:
                 self.train_gait_dataset = labeled_video_dataset(
-                    data_path=self._dataset_idx[1],
+                    data_path=self._dataset_idx[2],
                     clip_sampler=make_clip_sampler("uniform", self._CLIP_DURATION),
                     transform=self.train_video_transform,
                 )
@@ -158,19 +167,35 @@ class WalkDataModule(LightningDataModule):
 
         if stage in ("fit", "validate", None):
             # * the val dataset, do not apply the gait cycle, just load the whole video.
-            self.val_gait_dataset = labeled_video_dataset(
-                data_path=self._dataset_idx[2],
-                clip_sampler=make_clip_sampler("uniform", self._CLIP_DURATION),
-                transform=self.val_video_transform,
-            )
+            if self._temporal_mix == True:
+                self.val_gait_dataset = labeled_gait_video_dataset(
+                    gait_cycle=self.gait_cycle,
+                    dataset_idx=self._dataset_idx[1],  # val mapped path, include gait cycle index.
+                    transform=self.val_mapping_transform,
+                    temporal_mix=self._temporal_mix,
+                )
+            else:
+                self.val_gait_dataset = labeled_video_dataset(
+                    data_path=self._dataset_idx[3],
+                    clip_sampler=make_clip_sampler("uniform", self._CLIP_DURATION),
+                    transform=self.val_video_transform,
+                )
 
         if stage in ("test", None):
             # * the test dataset, do not apply the gait cycle, just load the whole video.
-            self.test_gait_dataset = labeled_video_dataset(
-                data_path=self._dataset_idx[2],
-                clip_sampler=make_clip_sampler("uniform", self._CLIP_DURATION),
-                transform=self.val_video_transform,
-            )
+            if self._temporal_mix == True:
+                self.test_gait_dataset = labeled_gait_video_dataset(
+                    gait_cycle=self.gait_cycle,
+                    dataset_idx=self._dataset_idx[1],  # [train, val]
+                    transform=self.val_mapping_transform,
+                    temporal_mix=self._temporal_mix,
+                )
+            else:
+                self.test_gait_dataset = labeled_video_dataset(
+                    data_path=self._dataset_idx[3],
+                    clip_sampler=make_clip_sampler("uniform", self._CLIP_DURATION),
+                    transform=self.val_video_transform,
+                )
 
     def collate_fn(self, batch):
         """this function process the batch data, and return the batch data.
@@ -253,14 +278,25 @@ class WalkDataModule(LightningDataModule):
         normalizes the video before applying the scale, crop and flip augmentations.
         """
 
-        return DataLoader(
-            self.val_gait_dataset,
-            batch_size=self._default_batch_size,
-            num_workers=self._NUM_WORKERS,
-            pin_memory=True,
-            shuffle=False,
-            drop_last=True,
-        )
+        if self._temporal_mix == True and self.gait_cycle != -1:
+            return DataLoader(
+                self.val_gait_dataset,
+                batch_size=self._gait_cycle_batch_size,
+                num_workers=self._NUM_WORKERS,
+                pin_memory=True,
+                shuffle=False,
+                drop_last=True,
+                collate_fn=self.collate_fn
+            )
+        else:
+            return DataLoader(
+                self.val_gait_dataset,
+                batch_size=self._default_batch_size,
+                num_workers=self._NUM_WORKERS,
+                pin_memory=True,
+                shuffle=False,
+                drop_last=True,
+            )
 
     def test_dataloader(self) -> DataLoader:
         """
@@ -268,12 +304,22 @@ class WalkDataModule(LightningDataModule):
         in directory and subdirectory. Add transform that subsamples and
         normalizes the video before applying the scale, crop and flip augmentations.
         """
-
-        return DataLoader(
-            self.test_gait_dataset,
-            batch_size=self._default_batch_size,
-            num_workers=self._NUM_WORKERS,
-            pin_memory=True,
-            shuffle=False,
-            drop_last=True,
-        )
+        if self._temporal_mix == True and self.gait_cycle != -1:
+            return DataLoader(
+                self.test_gait_dataset,
+                batch_size=self._gait_cycle_batch_size,
+                num_workers=self._NUM_WORKERS,
+                pin_memory=True,
+                shuffle=False,
+                drop_last=True,
+                collate_fn=self.collate_fn
+            )
+        else:
+            return DataLoader(
+                self.test_gait_dataset,
+                batch_size=self._default_batch_size,
+                num_workers=self._NUM_WORKERS,
+                pin_memory=True,
+                shuffle=False,
+                drop_last=True,
+            )
