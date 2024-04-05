@@ -42,7 +42,6 @@ from train import GaitCycleLightningModule
 import hydra
 from cross_validation import DefineCrossValidation
 
-
 def save_inference(config, model, dataloader, fold):
 
     total_pred_list = []
@@ -92,21 +91,22 @@ def save_inference(config, model, dataloader, fold):
     label = torch.tensor(total_label_list)
 
     # save the results
+    save_path = Path(config.train.log_path) / "best_preds"
+
+    if save_path.exists() is False:
+        save_path.mkdir(parents=True)
+
     torch.save(
         pred,
-        Path(config.train.log_path)
-        / "best_preds"
-        / f"{config.model.model}_{config.data.sampling}_{fold}_pred.pt",
+        save_path / f"{config.model.model}_{config.data.sampling}_{fold}_pred.pt",
     )
     torch.save(
         label,
-        Path(config.train.log_path)
-        / "best_preds"
-        / f"{config.model.model}_{config.data.sampling}_{fold}_label.pt",
+        save_path / f"{config.model.model}_{config.data.sampling}_{fold}_label.pt",
     )
 
     logging.info(
-        f"save the pred and label into {Path(config.train.log_path)} / {config.model.model}_{config.data.sampler}_{fold}_pred.pt and {config.model.model}_{config.data.sampler}_{fold}_label.pt"
+        f"save the pred and label into {save_path} / {config.model.model}_{config.data.sampler}_{fold}"
     )
 
 
@@ -191,7 +191,8 @@ def init_params(config):
     #############
     # K fold
     #############
-
+    # * for one fold, we first train/val model, then save the best ckpt preds/label into .pt file.
+    
     for fold, dataset_value in fold_dataset_idx.items():
         logging.info("#" * 50)
         logging.info("Start train fold: {}".format(fold))

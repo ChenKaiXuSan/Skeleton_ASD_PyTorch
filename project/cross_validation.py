@@ -10,7 +10,7 @@ Comment:
 
 Have a good code time :)
 -----
-Last Modified: Friday March 22nd 2024 7:43:10 am
+Last Modified: Thursday April 4th 2024 3:56:05 pm
 Modified By: the developer formerly known as Kaixu Chen at <chenkaixusan@gmail.com>
 -----
 Copyright (c) 2024 The University of Tsukuba
@@ -259,7 +259,7 @@ class DefineCrossValidation(object):
                 json_fold_dataset_idx[k][3] = str(val_dataset_idx)
 
             with open((self.gait_seg_idx_path / str(self.class_num) / self.sampler / "index.json"), "w") as f:
-                json.dump(json_fold_dataset_idx, f)
+                json.dump(json_fold_dataset_idx, f, sort_keys=True, indent=4)
 
 
         elif os.path.exists(target_path):
