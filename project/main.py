@@ -106,7 +106,7 @@ def save_inference(config, model, dataloader, fold):
     )
 
     logging.info(
-        f"save the pred and label into {save_path} / {config.model.model}_{config.data.sampler}_{fold}"
+        f"save the pred and label into {save_path} / {config.model.model}_{config.data.sampling}_{fold}"
     )
 
 
@@ -139,9 +139,9 @@ def train(hparams, dataset_idx, fold):
 
     # define the early stop.
     early_stopping = EarlyStopping(
-        monitor="val/loss",
-        patience=5,
-        mode="min",
+        monitor="val/video_acc",
+        patience=2,
+        mode="max",
     )
 
     lr_monitor = LearningRateMonitor(logging_interval="step")
@@ -167,9 +167,9 @@ def train(hparams, dataset_idx, fold):
     trainer.fit(classification_module, data_module)
 
     # the validate method will wirte in the same log twice, so use the test method.
-    # trainer.test(classification_module, data_module, ckpt_path="best")
+    trainer.test(classification_module, data_module, ckpt_path="best")
 
-    return classification_module, data_module
+    return classification_module.load_from_checkpoint(trainer.checkpoint_callback.best_model_path), data_module
 
 
 @hydra.main(
