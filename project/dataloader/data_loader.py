@@ -80,21 +80,21 @@ class WalkDataModule(LightningDataModule):
 
         self._temporal_mix = opt.train.temporal_mix
 
-        self.train_mapping_transform = Compose(
-            [
-                UniformTemporalSubsample(self.uniform_temporal_subsample_num),
-                Div255(),
-                Resize(size=[self._IMG_SIZE, self._IMG_SIZE]),
-            ]
-        )
-
-        self.val_mapping_transform = Compose(
-            [
-                UniformTemporalSubsample(self.uniform_temporal_subsample_num),
-                Div255(),
-                Resize(size=[self._IMG_SIZE, self._IMG_SIZE]),
-            ]
-        )
+        if self._temporal_mix:
+            self.mapping_transform = Compose(
+                [
+                    Div255(),
+                    Resize(size=[self._IMG_SIZE, self._IMG_SIZE])
+                ]
+            )
+        else:
+            self.mapping_transform = Compose(
+                [
+                    UniformTemporalSubsample(self.uniform_temporal_subsample_num),
+                    Div255(),
+                    Resize(size=[self._IMG_SIZE, self._IMG_SIZE]),
+                ]
+            )
 
         self.train_video_transform = Compose(
             [
@@ -161,7 +161,7 @@ class WalkDataModule(LightningDataModule):
                 self.train_gait_dataset = labeled_gait_video_dataset(
                     gait_cycle=self.gait_cycle,
                     dataset_idx=self._dataset_idx[0],  # [train, val]
-                    transform=self.train_mapping_transform,
+                    transform=self.mapping_transform,
                     temporal_mix=self._temporal_mix,
                 )
 
@@ -171,7 +171,7 @@ class WalkDataModule(LightningDataModule):
                 self.val_gait_dataset = labeled_gait_video_dataset(
                     gait_cycle=self.gait_cycle,
                     dataset_idx=self._dataset_idx[1],  # val mapped path, include gait cycle index.
-                    transform=self.val_mapping_transform,
+                    transform=self.mapping_transform,
                     temporal_mix=self._temporal_mix,
                 )
             else:
@@ -186,8 +186,8 @@ class WalkDataModule(LightningDataModule):
             if self._temporal_mix == True:
                 self.test_gait_dataset = labeled_gait_video_dataset(
                     gait_cycle=self.gait_cycle,
-                    dataset_idx=self._dataset_idx[1],  # [train, val]
-                    transform=self.val_mapping_transform,
+                    dataset_idx=self._dataset_idx[1],  # val mapped path, include gait cycle index.
+                    transform=self.mapping_transform,
                     temporal_mix=self._temporal_mix,
                 )
             else:
@@ -278,6 +278,7 @@ class WalkDataModule(LightningDataModule):
         normalizes the video before applying the scale, crop and flip augmentations.
         """
 
+        # ! 在使用temporal mix的情况下，到底需不需要给验证集也上tenmporal mix？
         if self._temporal_mix == True and self.gait_cycle != -1:
             return DataLoader(
                 self.val_gait_dataset,

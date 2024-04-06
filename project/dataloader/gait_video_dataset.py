@@ -54,6 +54,7 @@ def split_gait_cycle(video_tensor: torch.Tensor, gait_cycle_index: list, gait_cy
         #     use_idx.append(gait_cycle_index[0])
         #     print('the gait cycle index is less than 2, so use first gait cycle')
 
+        # FIXME: maybe here do not -1 for upper limit.
         for i in range(1, len(gait_cycle_index)-1, 2):
             ans_list.append(video_tensor[gait_cycle_index[i]:gait_cycle_index[i+1], ...])
             use_idx.append(gait_cycle_index[i])
@@ -218,9 +219,8 @@ class LabeledGaitVideoDataset(torch.utils.data.Dataset):
 
         logging.info(f"video name: {video_name}, gait cycle index: {gait_cycle_index}")
 
-        # use temporal mix or not
-        # TODO: should return the new frame, named temporal mix.
         if self._temporal_mix:
+            # should return the new frame, named temporal mix.
             defined_vframes = self._temporal_mix(vframes, gait_cycle_index, bbox)
         else:
             # split gait by gait cycle index, first phase or second phase
@@ -240,7 +240,9 @@ class LabeledGaitVideoDataset(torch.utils.data.Dataset):
         if self._transform is not None:
             video_t_list = []
             for video_t in defined_vframes:
-                video_t_list.append(self._transform(video_t.permute(1, 0, 2, 3)))
+                transformed_img = self._transform(video_t.permute(1, 0, 2, 3))
+                video_t_list.append(transformed_img)
+
 
             sample_info_dict["video"] = torch.stack(video_t_list, dim=0) # c, t, h, w
         else:

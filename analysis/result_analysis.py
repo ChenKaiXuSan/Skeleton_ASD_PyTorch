@@ -62,6 +62,8 @@ from pytorch_grad_cam import (
 )
 from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
 from pytorch_grad_cam.utils.image import show_cam_on_image
+from torchvision.io.image import write_png
+
 
 def get_inference(test_data, model):
 
@@ -79,6 +81,8 @@ def get_inference(test_data, model):
         label = batch["label"].detach().to("cuda:0")  # b, class_num
 
         model.eval()
+
+        # write_png((video[0, :, 2, ...]*255).cpu().to(torch.uint8), filename=f'test{i}.png')
 
         # pred the video frames
         with torch.no_grad():
@@ -107,6 +111,7 @@ def get_inference(test_data, model):
 
     return pred, label
 
+
 def get_visualization(test_data, model):
 
     target_layer = [model.video_cnn.blocks[-2].res_blocks[-1]]
@@ -123,39 +128,57 @@ def get_visualization(test_data, model):
     )
     print(grayscale_cam.shape)
 
+def main():
 
-@hydra.main(config_path="/workspace/skeleton/configs", config_name="config.yaml")
-def main(hparams):
+    sampler = "none"
 
-    sampler = "over"
-
-    # val_dataset_idx = Path(hparams.data.gait_seg_index_data_path) / sampler / "index.json"
-    val_dataset_idx = "/workspace/data/gait_seg_index_dataset_512/over/index.json"
-    # 之前版本的问题所以许哟啊用之前版本的
-
-    json_dataset_idx = json.load(open(val_dataset_idx, "r"))
+    val_dataset_idx = "/workspace/data/seg_gait_index_mapping/2/none/index.json"
 
     # * this is best ckpt trained by the model
-    ckpt_path = "/workspace/skeleton/logs/resnet/2024-03-05/16-20-17/1_8_50/2/version_0/checkpoints/1-1.03-0.5846.ckpt"
-    fold = ckpt_path.split("/")[-4]
-    hparams.model.model = ckpt_path.split("/")[4]
-    hparams.train.gpu_num = 0
-    hparams.train.batch_size = 64
+    ckpt_path = "/workspace/skeleton/logs/resnet/2024-04-06/2/06-50-05/0/version_0/checkpoints/0-0.67-0.5916.ckpt"
 
-    # convert str to Path
-    for key, value in json_dataset_idx.items():
-        json_dataset_idx[key][0] = [Path(i) for i in value[0]]
-        json_dataset_idx[key][1] = Path(value[1])
+    hparams = torch.load(ckpt_path, map_location='cpu')['hyper_parameters']['hparams']
+
+    fold = ckpt_path.split("/")[-4]
+
+    # hparams.model.model = ckpt_path.split("/")[4]
+    hparams.train.gpu_num = 0
+    # hparams.train.temporal_mix=True
+    # hparams.train.batch_size = 64
+
+    # prepare dataset mapping     
+
+    fold_dataset_idx = json.load(open(val_dataset_idx, "r"))
+
+    # unpack the dataset mapping
+    for k, v in fold_dataset_idx.items():
+        # train mapping, include the gait cycle index
+        train_mapping_idx = v[0]
+        fold_dataset_idx[k][0] = [Path(i) for i in train_mapping_idx]
+
+        # val mapping, include the gait cycle index 
+        val_mapping_idx = v[1]
+        fold_dataset_idx[k][1] = [Path(i) for i in val_mapping_idx]
+
+        # train video path
+        train_video_idx = v[2]
+        fold_dataset_idx[k][2] = Path(train_video_idx)
+
+        # val video path
+        val_dataset_idx = v[3]
+        fold_dataset_idx[k][3] = Path(val_dataset_idx)
 
     seed_everything(42, workers=True)
 
+    # load model
     classification_module = (
         GaitCycleLightningModule(hparams)
         .load_from_checkpoint(ckpt_path)
         .to(f"cuda:{hparams.train.gpu_num}")
     )
 
-    data_module = WalkDataModule(hparams, json_dataset_idx[str(fold)])
+    # load dataset
+    data_module = WalkDataModule(hparams, fold_dataset_idx[fold])
     data_module.setup()
 
     # define metrics
@@ -173,17 +196,17 @@ def main(hparams):
     # save the results
     torch.save(
         pred,
-        Path("/workspace/skeleton/misc")
+        Path("/workspace/skeleton/analysis")
         / f"{hparams.model.model}_{sampler}_{fold}_pred.pt",
     )
     torch.save(
         label,
-        Path("/workspace/skeleton/misc")
+        Path("/workspace/skeleton/analysis")
         / f"{hparams.model.model}_{sampler}_{fold}_label.pt",
     )
 
     logging.info(
-        f"save the pred and label into {Path('/workspace/skeleton/misc')} / {hparams.model.model}_{sampler}_{fold}_pred.pt and {hparams.model.model}_{sampler}_{fold}_label.pt"
+        f"save the pred and label into {Path('/workspace/skeleton/analysis')} / {hparams.model.model}_{sampler}_{fold}_pred.pt and {hparams.model.model}_{sampler}_{fold}_label.pt"
     )
 
     print("*" * 100)
