@@ -1,31 +1,35 @@
+#!/usr/bin/env python3
+# -*- coding:utf-8 -*-
 '''
-File: make_model.py
-Project: models
-Created Date: 2023-10-19 02:33:46
-Author: chenkaixu
+File: /workspace/skeleton/project/models/make_model.py
+Project: /workspace/skeleton/project/models
+Created Date: Thursday October 19th 2023
+Author: Kaixu Chen
 -----
 Comment:
- 
-Have a good code time!
+
+Have a good code time :)
 -----
-Last Modified: 2023-10-19 02:34:31
-Modified By: chenkaixu
+Last Modified: Thursday October 19th 2023 2:33:46 am
+Modified By: the developer formerly known as Kaixu Chen at <chenkaixusan@gmail.com>
+-----
+Copyright (c) 2023 The University of Tsukuba
 -----
 HISTORY:
-Date 	By 	Comments
-------------------------------------------------
-
+Date      	By	Comments
+----------	---	---------------------------------------------------------
 '''
 
 # %%
-from pytorchvideo.models import x3d, resnet, csn, slowfast, r2plus1d
+from typing import Any, List
 
 import torch
 import torch.nn as nn
-from torchvision.models import resnet50, ResNet50_Weights
+
+from pytorchvideo.models import x3d, resnet, slowfast
+from torchvision.models import resnet50, mobilenet_v3_large, efficientnet_v2_l, alexnet
 
 # %%
-
 class MakeVideoModule(nn.Module):
     '''
     the module zoo from the PytorchVideo lib, to make the different 3D model.
@@ -36,9 +40,9 @@ class MakeVideoModule(nn.Module):
 
         super().__init__()
 
+        self.model_name = hparams.model.model
         self.model_class_num = hparams.model.model_class_num
         self.model_depth = hparams.model.model_depth
-
         self.transfor_learning = hparams.train.transfor_learning
 
     def make_walk_resnet(self, input_channel:int = 3) -> nn.Module:
@@ -92,3 +96,30 @@ class MakeVideoModule(nn.Module):
             )
 
         return model
+    
+    def __call__(self, *args: Any, **kwds: Any) -> Any:
+
+        if self.model_name == "resnet":
+            return self.make_walk_resnet()
+        elif self.model_name == "x3d":
+            return self.make_walk_x3d()
+        else:
+            raise KeyError(f"the model name {self.model_name} is not in the model zoo")
+
+        
+class MakeImageModule(nn.Module):
+    '''
+    the module zoo from the torchvision lib, to make the different 2D model.
+
+    '''
+
+    def __init__(self, hparams) -> None:
+
+        super().__init__()
+
+        self.model_name = hparams.model.model
+        self.model_class_num = hparams.model.model_class_num
+        self.transfor_learning = hparams.train.transfer_learning
+
+    def make_resnet(self, input_channel:int = 3) -> nn.Module:
+        ...

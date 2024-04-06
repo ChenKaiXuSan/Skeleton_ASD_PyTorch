@@ -5,47 +5,44 @@ Created Date: 2023-10-19 02:29:47
 Author: chenkaixu
 -----
 Comment:
+ This file is the train/val/test process for the project.
  
+
 Have a good code time!
 -----
-Last Modified: 2023-10-19 02:47:59
-Modified By: chenkaixu
+Last Modified: Thursday October 19th 2023 2:29:47 am
+Modified By: the developer formerly known as Kaixu Chen at <chenkaixusan@gmail.com>
 -----
 HISTORY:
 Date 	By 	Comments
 ------------------------------------------------
 
+22-03-2024	Kaixu Chen	add different class number mapping, now the class number is a hyperparameter.
+
+14-12-2023	Kaixu Chen refactor the code, now it a simple code to train video frame from dataloader.
+
 '''
 
-import csv, logging
 from typing import Any, List, Optional, Union
-from pytorch_lightning.utilities.types import EPOCH_OUTPUT, STEP_OUTPUT
+from pytorch_lightning.utilities.types import STEP_OUTPUT
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
+
+import logging
 
 from pytorch_lightning import LightningModule
 
-from torchvision.io import write_video
-from torchvision.utils import save_image, flow_to_image
-
-from torchmetrics import classification
-from torchmetrics.functional.classification import (
-    binary_f1_score,
-    binary_accuracy,
-    binary_precision,
-    binary_recall,
-    binary_cohen_kappa,
-    binary_auroc,
-    binary_confusion_matrix,
+from torchmetrics.classification import (
+    MulticlassAccuracy,
+    MulticlassPrecision,
+    MulticlassRecall,
+    MulticlassF1Score,
+    MulticlassConfusionMatrix
 )
 
 from models.make_model import MakeVideoModule
-from models.optical_flow import Optical_flow
-
-import wandb
 
 class GaitCycleLightningModule(LightningModule):
     def __init__(self, hparams):
@@ -56,84 +53,153 @@ class GaitCycleLightningModule(LightningModule):
 
         self.num_classes = hparams.model.model_class_num
 
-        self.optical_flow_model = Optical_flow()
         # define model
-        self.video_cnn = MakeVideoModule(hparams).make_walk_resnet(3)
-        self.of_cnn = MakeVideoModule(hparams).make_walk_resnet(2)
+        self.video_cnn = MakeVideoModule(hparams)()
 
         # save the hyperparameters to the file and ckpt
         self.save_hyperparameters()
 
-        self._accuracy = classification.BinaryAccuracy()
-        self._precision = classification.BinaryPrecision()
-        self._recall = classification.BinaryRecall()
-        self._confusion_matrix = classification.BinaryConfusionMatrix()
+        self._accuracy = MulticlassAccuracy(num_classes=self.num_classes)
+        self._precision = MulticlassPrecision(num_classes=self.num_classes)
+        self._recall = MulticlassRecall(num_classes=self.num_classes)
+        self._f1_score = MulticlassF1Score(num_classes=self.num_classes)
+        self._confusion_matrix = MulticlassConfusionMatrix(num_classes=self.num_classes)
 
     def forward(self, x):
-        return self.model(x)
-
-    def on_train_start(self) -> None:
-        self.logger.watch(self.video_cnn)
+        return self.video_cnn(x)
 
     def training_step(self, batch: torch.Tensor, batch_idx: int):
-        # input and model define
+
+        # prepare the input and label
         video = batch["video"].detach()  # b, c, t, h, w
         label = batch["label"].detach().float().squeeze()  # b
+        # sample_info = batch["info"] # b is the video instance number
 
         b, c, t, h, w = video.shape
 
-        video_flow = self.optical_flow_model.process_batch(video)  # b, c, t, h, w
+        video_preds = self.video_cnn(video)
+        video_preds_softmax = torch.softmax(video_preds, dim=1)
 
-        video_preds = self.video_cnn(video).squeeze()
-        of_preds = self.of_cnn(video_flow).squeeze()
+        # check shape 
+        if b == 1:
+            label = label.unsqueeze(0)
+            
+        assert label.shape[0] == video_preds.shape[0]
 
-        total_preds = (video_preds + of_preds) / 2
-        total_loss = F.binary_cross_entropy_with_logits(total_preds, label)
+        loss = F.cross_entropy(video_preds, label.long())
 
-        self.save_log([total_preds], label, train_flag=True)
+        self.log("train/loss", loss, on_epoch=True, on_step=True)
 
-        return total_loss
+        # log metrics
+        video_acc = self._accuracy(video_preds_softmax, label)
+        video_precision = self._precision(video_preds_softmax, label)
+        video_recall = self._recall(video_preds_softmax, label)
+        video_f1_score = self._f1_score(video_preds_softmax, label)
+        video_confusion_matrix = self._confusion_matrix(video_preds_softmax, label)
 
-    def on_train_epoch_end(self) -> None:
-        self.log("lr", self.optimizers().param_groups[0]["lr"])
+        self.log_dict(
+            {
+                "train/video_acc": video_acc,
+                "train/video_precision": video_precision,
+                "train/video_recall": video_recall,
+                "train/video_f1_score": video_f1_score,
+            }, 
+            on_epoch=True, on_step=True, batch_size=b
+        )
 
-    def on_validation_start(self) -> None:
-        wandb.define_metric("val/loss", summary="min")
-        wandb.define_metric("val/acc", summary="max")
+        return loss
+
 
     def validation_step(self, batch: torch.Tensor, batch_idx: int):
+
         # input and model define
         video = batch["video"].detach()  # b, c, t, h, w
         label = batch["label"].detach().float().squeeze()  # b
 
         b, c, t, h, w = video.shape
 
-        video_flow = self.optical_flow_model.process_batch(video)  # b, c, t, h, w
+        video_preds = self.video_cnn(video)
+        video_preds_softmax = torch.softmax(video_preds, dim=1)
 
-        video_preds = self.video_cnn(video).squeeze()
-        of_preds = self.of_cnn(video_flow).squeeze()
+        if b == 1:
+            label = label.unsqueeze(0)
 
-        # * sum the different predict score.
-        total_preds = (video_preds + of_preds) / 2
+        # check shape 
+        assert label.shape[0] == b
 
-        self.save_log([total_preds], label, train_flag=False)
+        loss = F.cross_entropy(video_preds, label.long())
 
-        # * save one batch image and flow
-        if batch_idx == 0:
-            images = wandb.Image(video[0].permute(1,0,2,3).cpu())
-            flow_image = flow_to_image(video_flow[0].permute(1,0,2,3)) # f, 2, h, w > f, 3, h, w
-            flows = wandb.Image(
-                flow_image.resize(t - 1, 3, h, w).cpu() / 255,
-            )
+        self.log("val/loss", loss, on_epoch=True, on_step=True)
 
-            wandb.log(
-                {
-                    f"Media/val_image_batch0": images,
-                    f"Media/val_flow_batch0": flows,
-                }
-            )
+        # log metrics
+        video_acc = self._accuracy(video_preds_softmax, label)
+        video_precision = self._precision(video_preds_softmax, label)
+        video_recall = self._recall(video_preds_softmax, label)
+        video_f1_score = self._f1_score(video_preds_softmax, label)
+        video_confusion_matrix = self._confusion_matrix(video_preds_softmax, label)
+        
+        self.log_dict(
+            {
+                "val/video_acc": video_acc,
+                "val/video_precision": video_precision,
+                "val/video_recall": video_recall,
+                "val/video_f1_score": video_f1_score,
+            },
+            on_epoch=True, on_step=True, batch_size=b
+        )
 
-        # return video, video_flow  # video_preds_sigmoid, label
+    def test_step(self, batch: torch.Tensor, batch_idx: int):
+
+        # input and model define
+        video = batch["video"].detach()  # b, c, t, h, w
+        label = batch["label"].detach().float().squeeze()  # b
+
+        b, c, t, h, w = video.shape
+
+        video_preds = self.video_cnn(video)
+        video_preds_softmax = torch.softmax(video_preds, dim=1)
+
+        if b == 1:
+            label = label.unsqueeze(0)
+
+        # check shape 
+        assert label.shape[0] == b
+
+        loss = F.cross_entropy(video_preds, label.long())
+
+        self.log("val/loss", loss, on_epoch=True, on_step=True)
+
+        # log metrics
+        video_acc = self._accuracy(video_preds_softmax, label)
+        video_precision = self._precision(video_preds_softmax, label)
+        video_recall = self._recall(video_preds_softmax, label)
+        video_f1_score = self._f1_score(video_preds_softmax, label)
+        video_confusion_matrix = self._confusion_matrix(video_preds_softmax, label)
+
+        logging.info(f"video_acc: {video_acc}")
+        logging.info(f"video_precision: {video_precision}")
+        logging.info(f"video_recall: {video_recall}")
+        logging.info(f"video_f1_score: {video_f1_score}")
+        logging.info(f"video_confusion_matrix: {video_confusion_matrix}")
+
+        
+        self.log_dict(
+            {
+                "val/video_acc": video_acc,
+                "val/video_precision": video_precision,
+                "val/video_recall": video_recall,
+                "val/video_f1_score": video_f1_score,
+            },
+            on_epoch=True, on_step=True, batch_size=b
+        )
+
+        return {
+            "video_acc": video_acc,
+            "video_precision": video_precision,
+            "video_recall": video_recall,
+            "video_f1_score": video_f1_score,
+            "video_confusion_matrix": video_confusion_matrix,
+        }
 
     def configure_optimizers(self):
         """
@@ -155,93 +221,3 @@ class GaitCycleLightningModule(LightningModule):
                 "monitor": "train/loss",
             },
         }
-
-    def _get_name(self):
-        return self.model_type
-
-    def save_log(self, pred_list: list, label: torch.Tensor, train_flag: True):
-        """
-        save_log, save the log to the wandb.
-
-        Args:
-            pred_list (list): the predicted value in list, [video_preds, of_preds]
-            label (torch.Tensor): ground truth label.
-            train_flag (True): train flag, for the wandb log.
-        """
-
-        if train_flag:
-            flag = "train"
-        else:
-            flag = "val"
-
-        if len(pred_list) == 1:
-            preds = pred_list[0]
-
-            pred_sigmoid = torch.sigmoid(preds)
-
-            total_loss = F.binary_cross_entropy_with_logits(preds, label)
-
-            # video rgb metrics
-            accuracy = binary_accuracy(pred_sigmoid, label)
-            precision = binary_precision(pred_sigmoid, label)
-            f1_score = binary_f1_score(pred_sigmoid, label)
-            auroc = binary_auroc(pred_sigmoid, label)
-            cm = binary_confusion_matrix(pred_sigmoid, label)
-
-            # log to tensorboard
-            self.log_dict(
-                {
-                    f"{flag}/loss": total_loss,
-                    f"{flag}/acc": accuracy,
-                    f"{flag}/precision": precision,
-                    f"{flag}/f1_score": f1_score,
-                    f"{flag}/auroc": auroc,
-                }
-            )
-
-        elif len(pred_list) == 2:
-            video_preds = pred_list[0]
-            of_preds = pred_list[1]
-
-            video_preds_sigmoid = torch.sigmoid(video_preds)
-            of_preds_sigmoid = torch.sigmoid(of_preds)
-
-            video_loss = F.binary_cross_entropy_with_logits(video_preds, label)
-            of_loss = F.binary_cross_entropy_with_logits(of_preds, label)
-
-            total_loss = (video_loss + of_loss) / 2
-            self.log(f"{flag}/loss", total_loss)
-
-            # video metrics
-            video_acc = binary_accuracy(video_preds_sigmoid, label)
-            video_precision = binary_precision(video_preds_sigmoid, label)
-            video_recall = binary_recall(video_preds_sigmoid, label)
-            video_confusion_matrix = binary_confusion_matrix(video_preds_sigmoid, label)
-
-            self.log_dict(
-                {
-                    f"{flag}/video_acc": video_acc,
-                    f"{flag}/video_precision": video_precision,
-                    f"{flag}/video_recall": video_recall,
-                }
-            )
-
-            logging.info("*" * 50)
-            logging.info(f"{flag}/video_confusion_matrix: %s" % video_confusion_matrix)
-
-            # of metrics
-            of_acc = binary_accuracy(of_preds_sigmoid, label)
-            of_precision = binary_precision(of_preds_sigmoid, label)
-            of_recall = binary_recall(of_preds_sigmoid, label)
-            of_confusion_matrix = binary_confusion_matrix(of_preds_sigmoid, label)
-
-            self.log_dict(
-                {
-                    f"{flag}/of_acc": of_acc,
-                    f"{flag}/of_precision": of_precision,
-                    f"{flag}/of_recall": of_recall,
-                }
-            )
-
-            logging.info("*" * 50)
-            logging.info(f"{flag}/of_confusion_matrix: %s" % of_confusion_matrix)

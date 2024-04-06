@@ -1,4 +1,4 @@
-'''
+"""
 File: main.py
 Project: project
 Created Date: 2023-10-19 02:29:35
@@ -8,53 +8,120 @@ Comment:
  
 Have a good code time!
 -----
-Last Modified: 2023-10-19 02:42:33
-Modified By: chenkaixu
+Last Modified: Thursday October 19th 2023 2:29:35 am
+Modified By: the developer formerly known as Kaixu Chen at <chenkaixusan@gmail.com>
 -----
 HISTORY:
 Date 	By 	Comments
 ------------------------------------------------
 
-'''
+04-04-2024	Kaixu Chen	add save inference method. now it can save the pred/label to the disk, for the further analysis.
+2023-10-29	KX.C	add the lr monitor, and fast dev run to trainer.
 
-import os, logging, time, sys
+"""
+
+import os, logging
+from pathlib import Path
+from typing import Any
+import torch
 from pytorch_lightning import Trainer, seed_everything
-from pytorch_lightning import loggers as pl_loggers
-from pytorch_lightning.loggers import TensorBoardLogger, WandbLogger
+from pytorch_lightning.loggers import TensorBoardLogger
 
 # callbacks
-from pytorch_lightning.callbacks import TQDMProgressBar, RichModelSummary, ModelCheckpoint, EarlyStopping
-from pl_bolts.callbacks import PrintTableMetricsCallback, TrainingDataMonitor
+from pytorch_lightning.callbacks import (
+    TQDMProgressBar,
+    RichModelSummary,
+    ModelCheckpoint,
+    EarlyStopping,
+    LearningRateMonitor,
+)
 
 from dataloader.data_loader import WalkDataModule
 from train import GaitCycleLightningModule
 
-import pytorch_lightning
-import wandb
 import hydra
+from cross_validation import DefineCrossValidation
 
-# login the wandb
-wandb.login(anonymous="allow", key="eeece7dd9910c3cc2be6ae3e2f8b9b666f878066")
+def save_inference(config, model, dataloader, fold):
 
-def train(hparams):
+    total_pred_list = []
+    total_label_list = []
 
-    # fixme will occure bug, with deterministic = true
+    dataloader.setup()
+    test_dataloader = dataloader.test_dataloader()
+
+    for i, batch in enumerate(test_dataloader):
+
+        pred_list = []
+        label_list = []
+
+        # input and label
+        video = (
+            batch["video"].detach().to(f"cuda:{config.train.gpu_num}")
+        )  # b, c, t, h, w
+        label = (
+            batch["label"].detach().to(f"cuda:{config.train.gpu_num}")
+        )  # b, class_num
+
+        model.eval().to(f"cuda:{config.train.gpu_num}")
+
+        # pred the video frames
+        with torch.no_grad():
+            preds = model(video)
+
+        # when torch.size([1]), not squeeze.
+        if preds.size()[0] != 1 or len(preds.size()) != 1:
+            preds = preds.squeeze(dim=-1)
+            preds_softmax = torch.softmax(preds, dim=1)
+        else:
+            preds_softmax = torch.softmax(preds, dim=1)
+
+        pred_list.append(preds_softmax.tolist())
+        label_list.append(label.tolist())
+
+        for i in pred_list:
+            for number in i:
+                total_pred_list.append(number)
+
+        for i in label_list:
+            for number in i:
+                total_label_list.append(number)
+
+    pred = torch.tensor(total_pred_list)
+    label = torch.tensor(total_label_list)
+
+    # save the results
+    save_path = Path(config.train.log_path) / "best_preds"
+
+    if save_path.exists() is False:
+        save_path.mkdir(parents=True)
+
+    torch.save(
+        pred,
+        save_path / f"{config.model.model}_{config.data.sampling}_{fold}_pred.pt",
+    )
+    torch.save(
+        label,
+        save_path / f"{config.model.model}_{config.data.sampling}_{fold}_label.pt",
+    )
+
+    logging.info(
+        f"save the pred and label into {save_path} / {config.model.model}_{config.data.sampler}_{fold}"
+    )
+
+
+def train(hparams, dataset_idx, fold):
     seed_everything(42, workers=True)
 
     classification_module = GaitCycleLightningModule(hparams)
 
-    # instance the data module
-    data_module = WalkDataModule(hparams)
+    data_module = WalkDataModule(hparams, dataset_idx)
 
     # for the tensorboard
-    # tb_logger = pl_loggers.TensorBoardLogger(save_dir=os.path.join(hparams.log_path, hparams.model), name=hparams.log_version, version=hparams.fold)
-
-    # init wandb logger
-    wandb_logger = WandbLogger(name='_'.join([hparams.train.version, hparams.model.model, hparams.train.fold]), 
-                            project='gait_cycle_3DCNN',
-                            save_dir=hparams.train.log_path,
-                            version=hparams.train.fold,
-                            log_model="all")
+    tb_logger = TensorBoardLogger(
+        save_dir=os.path.join(hparams.train.log_path),
+        name=str(fold),  # here should be str type.
+    )
 
     # some callbacks
     progress_bar = TQDMProgressBar(refresh_rate=100)
@@ -62,9 +129,9 @@ def train(hparams):
 
     # define the checkpoint becavier.
     model_check_point = ModelCheckpoint(
-        filename="{epoch}-{val/loss:.2f}-{val/acc:.4f}",
+        filename="{epoch}-{val/loss:.2f}-{val/video_acc:.4f}",
         auto_insert_metric_name=False,
-        monitor="val/acc",
+        monitor="val/video_acc",
         mode="max",
         save_last=False,
         save_top_k=2,
@@ -72,102 +139,78 @@ def train(hparams):
 
     # define the early stop.
     early_stopping = EarlyStopping(
-        monitor='val/loss',
+        monitor="val/loss",
         patience=5,
-        mode='min',
+        mode="min",
     )
 
-    # bolts callbacks
-    # table_metrics_callback = PrintTableMetricsCallback()
-    # monitor = TrainingDataMonitor(log_every_n_steps=50)
+    lr_monitor = LearningRateMonitor(logging_interval="step")
 
     trainer = Trainer(
-                      devices=[hparams.train.gpu_num,],
-                      accelerator="gpu",
-                      max_epochs=hparams.train.max_epochs,
-                      logger= wandb_logger, # tb_logger
-                      #   log_every_n_steps=100,
-                      check_val_every_n_epoch=1,
-                      callbacks=[progress_bar, rich_model_summary, model_check_point, early_stopping],
-                      #   deterministic=True
-                      )
+        devices=[
+            int(hparams.train.gpu_num),
+        ],
+        accelerator="gpu",
+        max_epochs=hparams.train.max_epochs,
+        logger=tb_logger,  # wandb_logger,
+        check_val_every_n_epoch=1,
+        callbacks=[
+            progress_bar,
+            rich_model_summary,
+            model_check_point,
+            early_stopping,
+            lr_monitor,
+        ],
+        fast_dev_run=hparams.train.fast_dev_run,  # if use fast dev run for debug.
+    )
 
-    # from the params
-    # trainer = Trainer.from_argparse_args(hparams)
-
-    # training and val
     trainer.fit(classification_module, data_module)
 
-    # TODO take code the record the val figure, in wandb and local file.
-    trainer.validate(classification_module, data_module) # , ckpt_path='best')
+    # the validate method will wirte in the same log twice, so use the test method.
+    # trainer.test(classification_module, data_module, ckpt_path="best")
 
-    # when one fold finish, close the wandb logger.
-    wandb.finish()
+    return classification_module, data_module
 
-    # return the best acc score.
-    return model_check_point.best_model_score.item()
 
 @hydra.main(
-        version_base=None,
-        config_path='/workspace/skeleton/configs',
-        config_name='config.yaml',
-        )
+    version_base=None,
+    config_path="/workspace/skeleton/configs",
+    config_name="config.yaml",
+)
 def init_params(config):
-
     #############
-    # K Fold CV
+    # prepare dataset index
     #############
 
-    DATE = str(time.localtime().tm_mon) + str(time.localtime().tm_mday)
-    DATA_PATH = config.data.data_path
-
-    # set the version
-    uniform_temporal_subsample_num = config.train.uniform_temporal_subsample_num
-    clip_duration = config.train.clip_duration
-    config.train.version = "_".join(
-        [DATE, str(clip_duration), str(uniform_temporal_subsample_num)]
-    )
-
-    # output log to file
-    log_path = (
-        "/workspace/skeleton/logs"
-        + "_".join([config.train.version, config.model.model])
-        + ".log"
-    )
-    sys.stdout = open(log_path, "w")
-
-    # get the fold number
-    fold_num = os.listdir(DATA_PATH)
-    fold_num.sort()
-    if "raw" in fold_num:
-        fold_num.remove("raw")
-
-    store_Acc_Dict = {}
-    sum_list = []
-
-    for fold in fold_num:
-        #################
-        # start k Fold CV
-        #################
-
-        logging.info("#" * 50)
-        logging.info("Start %s" % fold)
-        logging.info("#" * 50)
-
-        config.train.train_path = os.path.join(DATA_PATH, fold)
-        config.train.fold = fold
-
-        Acc_score = train(config)
-
-        store_Acc_Dict[fold] = Acc_score
-        sum_list.append(Acc_score)
+    fold_dataset_idx = DefineCrossValidation(config)()
 
     logging.info("#" * 50)
-    logging.info("different fold Acc:")
-    logging.info(store_Acc_Dict)
-    logging.info("Final avg Acc is: %s" % (sum(sum_list) / len(sum_list)))
+    logging.info("Start train all fold")
+    logging.info("#" * 50)
 
-if __name__ == '__main__':
+    #############
+    # K fold
+    #############
+    # * for one fold, we first train/val model, then save the best ckpt preds/label into .pt file.
+    
+    for fold, dataset_value in fold_dataset_idx.items():
+        logging.info("#" * 50)
+        logging.info("Start train fold: {}".format(fold))
+        logging.info("#" * 50)
 
+        classification_module, data_module = train(config, dataset_value, fold)
+
+        logging.info("#" * 50)
+        logging.info("finish train fold: {}".format(fold))
+        logging.info("#" * 50)
+
+        save_inference(config, classification_module, data_module, fold)
+
+    logging.info("#" * 50)
+    logging.info("finish train all fold")
+    logging.info("#" * 50)
+
+
+if __name__ == "__main__":
     os.environ["HYDRA_FULL_ERROR"] = "1"
     init_params()
