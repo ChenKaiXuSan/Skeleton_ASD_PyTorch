@@ -135,7 +135,7 @@ def main():
     val_dataset_idx = "/workspace/data/seg_gait_index_mapping/2/none/index.json"
 
     # * this is best ckpt trained by the model
-    ckpt_path = "/workspace/skeleton/logs/resnet/2024-04-06/2/06-50-05/0/version_0/checkpoints/0-0.67-0.5916.ckpt"
+    ckpt_path = "/workspace/skeleton/logs/resnet/2024-04-06/2/06-50-05/1/version_0/checkpoints/4-0.89-0.6371.ckpt"
 
     hparams = torch.load(ckpt_path, map_location='cpu')['hyper_parameters']['hparams']
 
