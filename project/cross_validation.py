@@ -175,10 +175,15 @@ class DefineCrossValidation(object):
         # train magic 
         train_tmp_dict = {}
         for i in train_mapped_path:
+            # not move ASD
+            if 'ASD' in i.name: continue;
+
             train_tmp_dict[i.name.split("-")[0]] = i
 
         val_tmp_dict = {}
         for i in val_mapped_path:
+            # not move ASD 
+            if 'ASD' in i.name: continue;
             val_tmp_dict[i.name.split("-")[0]] = i
 
         for k, v in train_tmp_dict.items():
