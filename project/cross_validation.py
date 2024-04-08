@@ -10,7 +10,7 @@ Comment:
 
 Have a good code time :)
 -----
-Last Modified: Thursday April 4th 2024 3:56:05 pm
+Last Modified: Monday April 8th 2024 2:50:12 am
 Modified By: the developer formerly known as Kaixu Chen at <chenkaixusan@gmail.com>
 -----
 Copyright (c) 2024 The University of Tsukuba
@@ -23,7 +23,7 @@ Date      	By	Comments
 '''
 
 
-import os, json, shutil, copy
+import os, json, shutil, copy, random
 from typing import Any, Dict, List, Tuple
 
 from imblearn.over_sampling import RandomOverSampler
@@ -104,27 +104,36 @@ class DefineCrossValidation(object):
         groups = []  # different patient groups
 
         disease_to_num = {disease: idx for idx, disease in class_num_mapping_Dict[self.class_num].items()}
+        element_to_num = {}
+
+        name_map = set()
 
         # process one disease in one loop.
         for disease, path in _path.items():
             patient_list = sorted(list(path))
-            name_map = set()
 
             for p in patient_list:
                 name, _ = p.name.split("-")
-                name_map.add(name)
+                #  FIXME: 我觉得HipOA是造成数据不平衡的原因，所以我把HipOA的数据去掉了
+                if 'HipOA' not in name:
+                    name_map.add(name)
 
-            element_to_num = {element: idx for idx, element in enumerate(name_map)}
-
+        for idx, element in enumerate(name_map):
+            element_to_num[element] = idx
+        
+        for disease, path in _path.items():
+            patient_list = sorted(list(path))
             for i in range(len(patient_list)):
 
                 name, _ = patient_list[i].name.split("-")
                 
                 label = disease_to_num[disease]
 
-                X.append(patient_list[i])  # true path in Path
-                y.append(label)  # label, 0, 1, 2
-                groups.append(element_to_num[name])  # number of different patient
+                # FIXME: 我举得HipOA是造成数据不平衡的原因，所以我把HipOA的数据去掉了
+                if 'HipOA' not in name:
+                    X.append(patient_list[i])  # true path in Path
+                    y.append(label)  # label, 0, 1, 2
+                    groups.append(element_to_num[name])  # number of different patient
 
         return X, y, groups
 
@@ -157,6 +166,35 @@ class DefineCrossValidation(object):
 
         return temp_path
 
+    @staticmethod
+    def magic_move(train_mapped_path, val_mapped_path):
+
+        new_train_mapped_path = copy.deepcopy(train_mapped_path)
+        new_val_mapped_path = copy.deepcopy(val_mapped_path)
+
+        # train magic 
+        train_tmp_dict = {}
+        for i in train_mapped_path:
+            train_tmp_dict[i.name.split("-")[0]] = i
+
+        val_tmp_dict = {}
+        for i in val_mapped_path:
+            val_tmp_dict[i.name.split("-")[0]] = i
+
+        for k, v in train_tmp_dict.items():
+            new_val_mapped_path.append(v)
+
+            rm_idx = new_train_mapped_path.index(v)
+            new_train_mapped_path.pop(rm_idx)
+
+        for k, v in val_tmp_dict.items():
+            new_train_mapped_path.append(v)
+
+            rm_idx = new_val_mapped_path.index(v)
+            new_val_mapped_path.pop(rm_idx)
+
+        return new_train_mapped_path, new_val_mapped_path
+    
     @staticmethod
     def map_class_num(class_num: int, raw_video_path: Path) -> Dict:
 
@@ -220,6 +258,9 @@ class DefineCrossValidation(object):
             else:
                 train_mapped_path = [X[i] for i in train_index]
                 val_mapped_path = [X[i] for i in test_index]
+
+            # FIXME: magic move 
+            train_mapped_path, val_mapped_path = self.magic_move(train_mapped_path, val_mapped_path)
 
             # make the val data path
             train_video_path = self.make_dataset_with_video(train_mapped_path, i, "train")
