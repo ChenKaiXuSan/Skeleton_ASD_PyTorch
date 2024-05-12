@@ -15,6 +15,9 @@ HISTORY:
 Date 	By 	Comments
 ------------------------------------------------
 
+12-05-2024	Kaixu Chen	Now choose different kinds of experiments based on the EXPERIMENT keyword.
+temporal mix, late fusion and single (stance/swing/random)
+
 04-04-2024	Kaixu Chen	when use temporal mix, need keep same data process method for train/val dataset.
 
 25-03-2024	Kaixu Chen	change batch size for train/val dataloader. Now set bs=1 for gait cycle dataset, set bs=32 for default dataset (without gait cycle).
@@ -55,6 +58,7 @@ disease_to_num_mapping_Dict: Dict = {
     4: {"ASD": 0, "DHS": 1, "LCS_HipOA": 2, "normal": 3},
 }
 
+
 class WalkDataModule(LightningDataModule):
     def __init__(self, opt, dataset_idx: Dict = None):
         super().__init__()
@@ -78,14 +82,11 @@ class WalkDataModule(LightningDataModule):
         self._dataset_idx = dataset_idx
         self._class_num = opt.model.model_class_num
 
-        self._temporal_mix = opt.train.temporal_mix
+        self._experiment = opt.train.experiment
 
-        if self._temporal_mix:
+        if self._experiment == "temporal_mix":
             self.mapping_transform = Compose(
-                [
-                    Div255(),
-                    Resize(size=[self._IMG_SIZE, self._IMG_SIZE])
-                ]
+                [Div255(), Resize(size=[self._IMG_SIZE, self._IMG_SIZE])]
             )
         else:
             self.mapping_transform = Compose(
@@ -146,8 +147,41 @@ class WalkDataModule(LightningDataModule):
             stage (Optional[str], optional): trainer.stage, in ('fit', 'validate', 'test', 'predict'). Defaults to None.
         """
 
-        if stage in ("fit", None):
-            # judge if use split the gait cycle, or use the whole video.
+        if self._experiment == "temporal_mix":
+
+            # train dataset
+            self.train_gait_dataset = labeled_gait_video_dataset(
+                gait_cycle=self.gait_cycle,
+                dataset_idx=self._dataset_idx[
+                    0
+                ],  # train mapped path, include gait cycle index.
+                transform=self.mapping_transform,
+                temporal_mix=True,
+            )
+
+            # val dataset
+            self.val_gait_dataset = labeled_gait_video_dataset(
+                gait_cycle=self.gait_cycle,
+                dataset_idx=self._dataset_idx[
+                    1
+                ],  # val mapped path, include gait cycle index.
+                transform=self.mapping_transform,
+                temporal_mix=True,
+            )
+
+            # test dataset 
+            self.test_gait_dataset = labeled_gait_video_dataset(
+                gait_cycle=self.gait_cycle,
+                dataset_idx=self._dataset_idx[
+                    1
+                ],  # val mapped path, include gait cycle index.
+                transform=self.mapping_transform,
+                temporal_mix=True,
+            )
+
+        elif self._experiment == "single":
+
+            # train dataset
             if self.gait_cycle == -1:
                 self.train_gait_dataset = labeled_video_dataset(
                     data_path=self._dataset_idx[2],
@@ -156,46 +190,144 @@ class WalkDataModule(LightningDataModule):
                 )
 
             else:
-                # * labeled dataset, where first define the giat cycle, and from .json file to load the video.
-                # * here only need dataset idx, mean first split the dataset, and then load the video.
                 self.train_gait_dataset = labeled_gait_video_dataset(
                     gait_cycle=self.gait_cycle,
-                    dataset_idx=self._dataset_idx[0],  # train mapped path, include gait cycle index.
+                    dataset_idx=self._dataset_idx[
+                        0
+                    ],  # train mapped path, include gait cycle index.
                     transform=self.mapping_transform,
-                    temporal_mix=self._temporal_mix,
+                    temporal_mix=False,
                 )
 
-        if stage in ("fit", "validate", None):
-            # * the val dataset, do not apply the gait cycle, just load the whole video.
-            if self._temporal_mix == True:
-                self.val_gait_dataset = labeled_gait_video_dataset(
-                    gait_cycle=self.gait_cycle,
-                    dataset_idx=self._dataset_idx[1],  # val mapped path, include gait cycle index.
-                    transform=self.mapping_transform,
-                    temporal_mix=self._temporal_mix,
-                )
-            else:
-                self.val_gait_dataset = labeled_video_dataset(
-                    data_path=self._dataset_idx[3],
-                    clip_sampler=make_clip_sampler("uniform", self._CLIP_DURATION),
-                    transform=self.val_video_transform,
-                )
+            # val dataset
+            self.val_gait_dataset = labeled_video_dataset(
+                data_path=self._dataset_idx[3],
+                clip_sampler=make_clip_sampler("uniform", self._CLIP_DURATION),
+                transform=self.val_video_transform,
+            )
 
-        if stage in ("test", None):
-            # * the test dataset, do not apply the gait cycle, just load the whole video.
-            if self._temporal_mix == True:
-                self.test_gait_dataset = labeled_gait_video_dataset(
-                    gait_cycle=self.gait_cycle,
-                    dataset_idx=self._dataset_idx[1],  # val mapped path, include gait cycle index.
-                    transform=self.mapping_transform,
-                    temporal_mix=self._temporal_mix,
-                )
-            else:
-                self.test_gait_dataset = labeled_video_dataset(
-                    data_path=self._dataset_idx[3],
-                    clip_sampler=make_clip_sampler("uniform", self._CLIP_DURATION),
-                    transform=self.val_video_transform,
-                )
+            # test dataset
+            self.test_gait_dataset = labeled_video_dataset(
+                data_path=self._dataset_idx[3],
+                clip_sampler=make_clip_sampler("uniform", self._CLIP_DURATION),
+                transform=self.val_video_transform,
+            )
+
+        elif self._experiment == "late_fusion":
+            
+            # train dataset
+            self.stance_train_gait_dataset = labeled_gait_video_dataset(
+                gait_cycle=0,
+                dataset_idx=self._dataset_idx[
+                    0
+                ],  # train mapped path, include gait cycle index.
+                transform=self.mapping_transform,
+                temporal_mix=False,
+            )
+            self.swing_train_gait_dataset = labeled_gait_video_dataset(
+                gait_cycle=1,
+                dataset_idx=self._dataset_idx[
+                    0
+                ],  # train mapped path, include gait cycle index.
+                transform=self.mapping_transform,
+                temporal_mix=False,
+            )
+
+            # val dataset
+            self.stance_val_gait_dataset = labeled_gait_video_dataset(
+                gait_cycle=0,
+                dataset_idx=self._dataset_idx[
+                    1
+                ],  # val mapped path, include gait cycle index.
+                transform=self.mapping_transform,
+                temporal_mix=False,
+            )
+            self.swing_val_gait_dataset = labeled_gait_video_dataset(
+                gait_cycle=1,
+                dataset_idx=self._dataset_idx[
+                    1
+                ],  # val mapped path, include gait cycle index.
+                transform=self.mapping_transform,
+                temporal_mix=False,
+            )
+
+            # test dataset
+            self.stance_test_gait_dataset = labeled_gait_video_dataset(
+                gait_cycle=0,
+                dataset_idx=self._dataset_idx[
+                    1
+                ],  # val mapped path, include gait cycle index.
+                transform=self.mapping_transform,
+                temporal_mix=False,
+            )
+            self.swing_test_gait_dataset = labeled_gait_video_dataset(
+                gait_cycle=1,
+                dataset_idx=self._dataset_idx[
+                    1
+                ],  # val mapped path, include gait cycle index.
+                transform=self.mapping_transform,
+                temporal_mix=False,
+            )
+
+        else:
+            raise ValueError("experiment keyword not support")
+
+        # if stage in ("fit", None):
+        #     # judge if use split the gait cycle, or use the whole video.
+        #     if self.gait_cycle == -1:
+        #         self.train_gait_dataset = labeled_video_dataset(
+        #             data_path=self._dataset_idx[2],
+        #             clip_sampler=make_clip_sampler("uniform", self._CLIP_DURATION),
+        #             transform=self.train_video_transform,
+        #         )
+
+        #     else:
+        #         # * labeled dataset, where first define the giat cycle, and from .json file to load the video.
+        #         # * here only need dataset idx, mean first split the dataset, and then load the video.
+        #         self.train_gait_dataset = labeled_gait_video_dataset(
+        #             gait_cycle=self.gait_cycle,
+        #             dataset_idx=self._dataset_idx[
+        #                 0
+        #             ],  # train mapped path, include gait cycle index.
+        #             transform=self.mapping_transform,
+        #             temporal_mix=self._temporal_mix,
+        #         )
+
+        # if stage in ("fit", "validate", None):
+        #     # * the val dataset, do not apply the gait cycle, just load the whole video.
+        #     if self._temporal_mix == True:
+        #         self.val_gait_dataset = labeled_gait_video_dataset(
+        #             gait_cycle=self.gait_cycle,
+        #             dataset_idx=self._dataset_idx[
+        #                 1
+        #             ],  # val mapped path, include gait cycle index.
+        #             transform=self.mapping_transform,
+        #             temporal_mix=self._temporal_mix,
+        #         )
+        #     else:
+        #         self.val_gait_dataset = labeled_video_dataset(
+        #             data_path=self._dataset_idx[3],
+        #             clip_sampler=make_clip_sampler("uniform", self._CLIP_DURATION),
+        #             transform=self.val_video_transform,
+        #         )
+
+        # if stage in ("test", None):
+        #     # * the test dataset, do not apply the gait cycle, just load the whole video.
+        #     if self._temporal_mix == True:
+        #         self.test_gait_dataset = labeled_gait_video_dataset(
+        #             gait_cycle=self.gait_cycle,
+        #             dataset_idx=self._dataset_idx[
+        #                 1
+        #             ],  # val mapped path, include gait cycle index.
+        #             transform=self.mapping_transform,
+        #             temporal_mix=self._temporal_mix,
+        #         )
+        #     else:
+        #         self.test_gait_dataset = labeled_video_dataset(
+        #             data_path=self._dataset_idx[3],
+        #             clip_sampler=make_clip_sampler("uniform", self._CLIP_DURATION),
+        #             transform=self.val_video_transform,
+        #         )
 
     def collate_fn(self, batch):
         """this function process the batch data, and return the batch data.
@@ -248,7 +380,7 @@ class WalkDataModule(LightningDataModule):
         in directory and subdirectory. Add transform that subsamples and
         normalizes the video before applying the scale, crop and flip augmentations.
         """
-        if self.gait_cycle == -1:
+        if self._experiment == "single":
             train_data_loader = DataLoader(
                 self.train_gait_dataset,
                 batch_size=self._default_batch_size,
@@ -258,7 +390,7 @@ class WalkDataModule(LightningDataModule):
                 drop_last=True,
             )
 
-        else:
+        elif self._experiment == "temporal_mix":
             train_data_loader = DataLoader(
                 self.train_gait_dataset,
                 batch_size=self._gait_cycle_batch_size,
@@ -268,6 +400,31 @@ class WalkDataModule(LightningDataModule):
                 drop_last=True,
                 collate_fn=self.collate_fn,
             )
+        elif self._experiment == "late_fusion": 
+            stance_train_data_loader = DataLoader(
+                self.stance_train_gait_dataset,
+                batch_size=self._gait_cycle_batch_size,
+                num_workers=self._NUM_WORKERS,
+                pin_memory=True,
+                shuffle=False,
+                drop_last=True,
+                collate_fn=self.collate_fn,
+            )
+
+            swing_train_data_loader = DataLoader(
+                self.swing_train_gait_dataset,
+                batch_size=self._gait_cycle_batch_size,
+                num_workers=self._NUM_WORKERS,
+                pin_memory=True,
+                shuffle=False,
+                drop_last=True,
+                collate_fn=self.collate_fn,
+            )
+
+            train_data_loader = {
+                "stance": stance_train_data_loader,
+                "swing": swing_train_data_loader,
+            }
 
         return train_data_loader
 
@@ -278,19 +435,8 @@ class WalkDataModule(LightningDataModule):
         normalizes the video before applying the scale, crop and flip augmentations.
         """
 
-        # ! 在使用temporal mix的情况下，到底需不需要给验证集也上tenmporal mix？
-        if self._temporal_mix == True and self.gait_cycle != -1:
-            return DataLoader(
-                self.val_gait_dataset,
-                batch_size=self._gait_cycle_batch_size,
-                num_workers=self._NUM_WORKERS,
-                pin_memory=True,
-                shuffle=False,
-                drop_last=True,
-                collate_fn=self.collate_fn
-            )
-        else:
-            return DataLoader(
+        if self._experiment == "single":
+            val_data_loader = DataLoader(
                 self.val_gait_dataset,
                 batch_size=self._default_batch_size,
                 num_workers=self._NUM_WORKERS,
@@ -299,28 +445,95 @@ class WalkDataModule(LightningDataModule):
                 drop_last=True,
             )
 
+        elif self._experiment == "temporal_mix":
+            val_data_loader = DataLoader(
+                self.val_gait_dataset,
+                batch_size=self._gait_cycle_batch_size,
+                num_workers=self._NUM_WORKERS,
+                pin_memory=True,
+                shuffle=True,
+                drop_last=True,
+                collate_fn=self.collate_fn,
+            )
+        elif self._experiment == "late_fusion": 
+            stance_val_data_loader = DataLoader(
+                self.stance_val_gait_dataset,
+                batch_size=self._gait_cycle_batch_size,
+                num_workers=self._NUM_WORKERS,
+                pin_memory=True,
+                shuffle=True,
+                drop_last=True,
+                collate_fn=self.collate_fn,
+            )
+
+            swing_val_data_loader = DataLoader(
+                self.swing_val_gait_dataset,
+                batch_size=self._gait_cycle_batch_size,
+                num_workers=self._NUM_WORKERS,
+                pin_memory=True,
+                shuffle=True,
+                drop_last=True,
+                collate_fn=self.collate_fn,
+            )
+
+            val_data_loader = {
+                "stance": stance_val_data_loader,
+                "swing": swing_val_data_loader,
+            }
+
+        return val_data_loader
+
     def test_dataloader(self) -> DataLoader:
         """
         create the Walk train partition from the list of video labels
         in directory and subdirectory. Add transform that subsamples and
         normalizes the video before applying the scale, crop and flip augmentations.
         """
-        if self._temporal_mix == True and self.gait_cycle != -1:
-            return DataLoader(
-                self.test_gait_dataset,
-                batch_size=self._gait_cycle_batch_size,
-                num_workers=self._NUM_WORKERS,
-                pin_memory=True,
-                shuffle=False,
-                drop_last=True,
-                collate_fn=self.collate_fn
-            )
-        else:
-            return DataLoader(
-                self.test_gait_dataset,
+
+        if self._experiment == "single":
+            val_data_loader = DataLoader(
+                self.val_gait_dataset,
                 batch_size=self._default_batch_size,
                 num_workers=self._NUM_WORKERS,
                 pin_memory=True,
                 shuffle=False,
                 drop_last=True,
             )
+
+        elif self._experiment == "temporal_mix":
+            val_data_loader = DataLoader(
+                self.val_gait_dataset,
+                batch_size=self._gait_cycle_batch_size,
+                num_workers=self._NUM_WORKERS,
+                pin_memory=True,
+                shuffle=True,
+                drop_last=True,
+                collate_fn=self.collate_fn,
+            )
+        elif self._experiment == "late_fusion": 
+            stance_val_data_loader = DataLoader(
+                self.stance_val_gait_dataset,
+                batch_size=self._gait_cycle_batch_size,
+                num_workers=self._NUM_WORKERS,
+                pin_memory=True,
+                shuffle=True,
+                drop_last=True,
+                collate_fn=self.collate_fn,
+            )
+
+            swing_val_data_loader = DataLoader(
+                self.swing_val_gait_dataset,
+                batch_size=self._gait_cycle_batch_size,
+                num_workers=self._NUM_WORKERS,
+                pin_memory=True,
+                shuffle=True,
+                drop_last=True,
+                collate_fn=self.collate_fn,
+            )
+
+            val_data_loader = {
+                "stance": stance_val_data_loader,
+                "swing": swing_val_data_loader,
+            }
+
+        return val_data_loader
