@@ -59,7 +59,6 @@ disease_to_num_mapping_Dict: Dict = {
     4: {"ASD": 0, "DHS": 1, "LCS_HipOA": 2, "normal": 3},
 }
 
-
 class WalkDataModule(LightningDataModule):
     def __init__(self, opt, dataset_idx: Dict = None):
         super().__init__()
