@@ -10,7 +10,7 @@ Comment:
 
 Have a good code time :)
 -----
-Last Modified: Monday May 13th 2024 7:24:14 am
+Last Modified: Monday May 13th 2024 11:43:49 am
 Modified By: the developer formerly known as Kaixu Chen at <chenkaixusan@gmail.com>
 -----
 Copyright (c) 2024 The University of Tsukuba
@@ -138,16 +138,24 @@ class LateFusionModule(LightningModule):
         elif stance_video.size()[0] < swing_video.size()[0]:
             swing_video = swing_video[:stance_video.size()[0]]
             label = stance_label
+        else:
+            label = stance_label
 
-        stance_preds = self.stance_cnn(stance_video)
-        swing_preds = self.swing_cnn(swing_video)
+        # * slove OOM problem, cut the large batch, when >= 30 
+        if stance_video.size()[0] + swing_video.size()[0] >= 30:
+            stance_preds = self.stance_cnn(stance_video[:14])
+            swing_preds = self.swing_cnn(swing_video[:14])
+            label = label[:14]
+        else:
+            stance_preds = self.stance_cnn(stance_video)
+            swing_preds = self.swing_cnn(swing_video)
 
         predict = (stance_preds + swing_preds) / 2 
         predict_softmax = torch.softmax(predict, dim=1)
 
         loss = F.cross_entropy(predict, label.long())
 
-        self.log("train/loss", loss, on_epoch=True, on_step=True)
+        self.log("val/loss", loss, on_epoch=True, on_step=True, batch_size=label.size()[0])
 
         # log metrics
         video_acc = self._accuracy(predict_softmax, label)
@@ -158,10 +166,10 @@ class LateFusionModule(LightningModule):
         
         self.log_dict(
             {
-                "train/video_acc": video_acc,
-                "train/video_precision": video_precision,
-                "train/video_recall": video_recall,
-                "train/video_f1_score": video_f1_score,
+                "val/video_acc": video_acc,
+                "val/video_precision": video_precision,
+                "val/video_recall": video_recall,
+                "val/video_f1_score": video_f1_score,
             }, 
             on_epoch=True, on_step=True, batch_size=label.size()[0]
         )
@@ -178,21 +186,31 @@ class LateFusionModule(LightningModule):
 
         # sample_info = batch["info"] # b is the video instance number
 
-        # shape check 
-        # assert stance.size()[0] == swing.size()[0]
-        # assert stance_label == swing_label
+        # keep shape 
+        if stance_video.size()[0] > swing_video.size()[0]:
+            stance_video = stance_video[:swing_video.size()[0]]
+            label = swing_label
+        elif stance_video.size()[0] < swing_video.size()[0]:
+            swing_video = swing_video[:stance_video.size()[0]]
+            label = stance_label
+        else:
+            label = stance_label
 
-        stance_preds = self.stance_cnn(stance_video)
-        stance_preds_softmax = torch.softmax(stance_preds, dim=1)
-        swing_preds = self.swing_cnn(swing_video)
-        swing_preds_softmax = torch.softmax(swing_preds, dim=1)
+        # * slove OOM problem, cut the large batch, when >= 30 
+        if stance_video.size()[0] + swing_video.size()[0] >= 30:
+            stance_preds = self.stance_cnn(stance_video[:14])
+            swing_preds = self.swing_cnn(swing_video[:14])
+            label = label[:14]
+        else:
+            stance_preds = self.stance_cnn(stance_video)
+            swing_preds = self.swing_cnn(swing_video)
 
         predict = (stance_preds + swing_preds) / 2 
         predict_softmax = torch.softmax(predict, dim=1)
 
-        loss = F.cross_entropy(predict, stance_label.long())
+        loss = F.cross_entropy(predict, label.long())
 
-        self.log("train/loss", loss, on_epoch=True, on_step=True)
+        self.log("test/loss", loss, on_epoch=True, on_step=True, batch_size=label.size()[0])
 
         # log metrics
         video_acc = self._accuracy(predict_softmax, stance_label)
@@ -203,12 +221,12 @@ class LateFusionModule(LightningModule):
         
         self.log_dict(
             {
-                "train/video_acc": video_acc,
-                "train/video_precision": video_precision,
-                "train/video_recall": video_recall,
-                "train/video_f1_score": video_f1_score,
+                "test/video_acc": video_acc,
+                "test/video_precision": video_precision,
+                "test/video_recall": video_recall,
+                "test/video_f1_score": video_f1_score,
             }, 
-            on_epoch=True, on_step=True, batch_size=stance_video.size()[0]
+            on_epoch=True, on_step=True, batch_size=label.size()[0]
         )
 
 
