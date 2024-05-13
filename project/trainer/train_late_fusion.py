@@ -10,7 +10,7 @@ Comment:
 
 Have a good code time :)
 -----
-Last Modified: Monday May 13th 2024 1:37:28 pm
+Last Modified: Monday May 13th 2024 3:02:39 pm
 Modified By: the developer formerly known as Kaixu Chen at <chenkaixusan@gmail.com>
 -----
 Copyright (c) 2024 The University of Tsukuba
@@ -213,11 +213,11 @@ class LateFusionModule(LightningModule):
         self.log("test/loss", loss, on_epoch=True, on_step=True, batch_size=label.size()[0])
 
         # log metrics
-        video_acc = self._accuracy(predict_softmax, stance_label)
-        video_precision = self._precision(predict_softmax, stance_label)
-        video_recall = self._recall(predict_softmax, stance_label)
-        video_f1_score = self._f1_score(predict_softmax, stance_label)
-        video_confusion_matrix = self._confusion_matrix(predict_softmax, stance_label)
+        video_acc = self._accuracy(predict_softmax, label)
+        video_precision = self._precision(predict_softmax, label)
+        video_recall = self._recall(predict_softmax, label)
+        video_f1_score = self._f1_score(predict_softmax, label)
+        video_confusion_matrix = self._confusion_matrix(predict_softmax, label)
         
         self.log_dict(
             {
