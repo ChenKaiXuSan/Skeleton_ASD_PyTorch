@@ -23,6 +23,9 @@ Date 	By 	Comments
 import os, logging
 from pathlib import Path
 from typing import Any
+import matplotlib.pyplot as plt
+import seaborn as sns
+
 import torch
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.loggers import TensorBoardLogger
@@ -41,6 +44,15 @@ from train import GaitCycleLightningModule
 
 import hydra
 from cross_validation import DefineCrossValidation
+
+from torchmetrics.classification import (
+    MulticlassAccuracy,
+    MulticlassPrecision,
+    MulticlassRecall,
+    MulticlassF1Score,
+    MulticlassConfusionMatrix,
+    MulticlassAUROC,
+)
 
 def save_inference(config, model, dataloader, fold):
 
@@ -109,6 +121,53 @@ def save_inference(config, model, dataloader, fold):
         f"save the pred and label into {save_path} / {config.model.model}_{config.data.sampling}_{fold}"
     )
 
+    # save confusion matrix 
+    save_CM(pred, label, fold)
+
+def save_CM(all_pred, all_label, fold, config):
+
+    save_path = Path(config.train.log_path) / "CM"
+
+    if save_path.exists() is False:
+        save_path.mkdir(parents=True)
+
+    # define metrics 
+    num_class = torch.unique(all_label).size(0)
+    _accuracy = MulticlassAccuracy(num_class)
+    _precision = MulticlassPrecision(num_class)
+    _recall = MulticlassRecall(num_class)
+    _f1_score = MulticlassF1Score(num_class)
+    _auroc = MulticlassAUROC(num_class)
+    _confusion_matrix = MulticlassConfusionMatrix(num_class, normalize="true")
+
+    print('*' * 100)
+    print('accuracy: %s' % _accuracy(all_pred, all_label))
+    print('precision: %s' % _precision(all_pred, all_label))
+    print('_binary_recall: %s' % _recall(all_pred, all_label))
+    print('_binary_f1: %s' % _f1_score(all_pred, all_label))
+    print('_aurroc: %s' % _auroc(all_pred, all_label))
+    print('_confusion_matrix: %s' % _confusion_matrix(all_pred, all_label))
+    print('#' * 100)
+
+   
+    # 设置字体和标题样式
+    plt.rcParams.update({'font.size': 30, 'font.family': 'sans-serif'})
+
+    # 假设的混淆矩阵数据
+    confusion_matrix_data = _confusion_matrix(all_pred, all_label).cpu().numpy() * 100
+
+    axis_labels = ['ASD', 'DHS', 'LCS_HipOA']
+
+    # 使用matplotlib和seaborn绘制混淆矩阵
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(confusion_matrix_data, annot=True, fmt='.2f', cmap='Reds', xticklabels=axis_labels, yticklabels=axis_labels, vmin=0, vmax=100)
+    plt.title(f'Fold {fold} (%)', fontsize=30)
+    plt.ylabel('Actual Label', fontsize=30)
+    plt.xlabel('Predicted Label', fontsize=30)
+
+    plt.savefig(save_path / f'fold{fold}_confusion_matrix.png', dpi=300, bbox_inches='tight')
+
+    print(f'save the confusion matrix into {save_path} / fold{fold}_confusion_matrix.png')
 
 def train(hparams, dataset_idx, fold):
     seed_everything(42, workers=True)

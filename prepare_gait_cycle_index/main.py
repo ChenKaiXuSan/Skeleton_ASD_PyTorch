@@ -266,7 +266,7 @@ def save_to_json(sample_info, save_path, logger, method: str) -> None:
 
     make_folder(save_path_with_name.parent)
     with open(save_path_with_name, "w") as f:
-        json.dump(sample_info, f)
+        json.dump(sample_info, f, indent=4)
     logger.info(f"Save the {sample_info['video_name']} to {save_path}")
 
 

@@ -160,7 +160,7 @@ class WalkDataModule(LightningDataModule):
                 # * here only need dataset idx, mean first split the dataset, and then load the video.
                 self.train_gait_dataset = labeled_gait_video_dataset(
                     gait_cycle=self.gait_cycle,
-                    dataset_idx=self._dataset_idx[0],  # [train, val]
+                    dataset_idx=self._dataset_idx[0],  # train mapped path, include gait cycle index.
                     transform=self.mapping_transform,
                     temporal_mix=self._temporal_mix,
                 )

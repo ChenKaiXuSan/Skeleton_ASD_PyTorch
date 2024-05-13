@@ -131,3 +131,4 @@ MNIST
 /logs
 /ckpt
 /analysis/logs
+*.gif
