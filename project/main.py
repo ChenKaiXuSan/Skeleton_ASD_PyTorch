@@ -40,8 +40,9 @@ from pytorch_lightning.callbacks import (
 )
 
 from dataloader.data_loader import WalkDataModule
-from train import GaitCycleLightningModule
-from train_late_fusion import LateFusionModule
+from trainer.train_single import SingleModule
+from trainer.train_late_fusion import LateFusionModule
+from trainer.train_temporal_mix import TemporalMixModule
 
 import hydra
 from cross_validation import DefineCrossValidation
@@ -186,8 +187,12 @@ def train(hparams, dataset_idx, fold):
 
     if hparams.train.experiment == "late_fusion":
         classification_module = LateFusionModule(hparams)
+    elif hparams.train.experiment.includes('single'):
+        classification_module = SingleModule(hparams)
+    elif hparams.train.experiment == "temporal_mix":
+        classification_module = TemporalMixModule(hparams)
     else:
-        classification_module = GaitCycleLightningModule(hparams)
+        raise ValueError("the experiment is not supported.")
 
     data_module = WalkDataModule(hparams, dataset_idx)
 

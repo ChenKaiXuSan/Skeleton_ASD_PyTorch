@@ -44,7 +44,7 @@ from torchmetrics.classification import (
 
 from models.make_model import MakeVideoModule
 
-class GaitCycleLightningModule(LightningModule):
+class SingleModule(LightningModule):
     def __init__(self, hparams):
         super().__init__()
 

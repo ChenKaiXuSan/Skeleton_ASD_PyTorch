@@ -10,7 +10,7 @@ Comment:
 
 Have a good code time :)
 -----
-Last Modified: Monday May 13th 2024 7:24:14 am
+Last Modified: Monday May 13th 2024 11:30:35 am
 Modified By: the developer formerly known as Kaixu Chen at <chenkaixusan@gmail.com>
 -----
 Copyright (c) 2024 The University of Tsukuba
@@ -41,7 +41,7 @@ from torchmetrics.classification import (
 
 from models.make_model import MakeVideoModule
 
-class LateFusionModule(LightningModule):
+class TemporalMixModule(LightningModule):
     def __init__(self, hparams):
         super().__init__()
 
