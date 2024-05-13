@@ -44,6 +44,7 @@ from pytorchvideo.transforms import (
 
 from typing import Any, Callable, Dict, Optional, Type
 from pytorch_lightning import LightningDataModule
+from pytorch_lightning.trainer.supporters import CombinedLoader
 
 import torch
 from torch.utils.data import DataLoader
@@ -481,7 +482,9 @@ class WalkDataModule(LightningDataModule):
                 "swing": swing_val_data_loader,
             }
 
-        return val_data_loader
+        return CombinedLoader({"stance": stance_val_data_loader,
+                               "swing": swing_val_data_loader
+                               })
 
     def test_dataloader(self) -> DataLoader:
         """

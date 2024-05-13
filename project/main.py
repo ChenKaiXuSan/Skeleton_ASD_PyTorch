@@ -41,6 +41,7 @@ from pytorch_lightning.callbacks import (
 
 from dataloader.data_loader import WalkDataModule
 from train import GaitCycleLightningModule
+from train_late_fusion import LateFusionModule
 
 import hydra
 from cross_validation import DefineCrossValidation
@@ -170,9 +171,23 @@ def save_CM(all_pred, all_label, fold, config):
     print(f'save the confusion matrix into {save_path} / fold{fold}_confusion_matrix.png')
 
 def train(hparams, dataset_idx, fold):
+    """the train process for the one fold.
+
+    Args:
+        hparams (hydra): the hyperparameters.
+        dataset_idx (int): the dataset index for the one fold.
+        fold (int): the fold index.
+
+    Returns:
+        list: best trained model, data loader
+    """    
+    
     seed_everything(42, workers=True)
 
-    classification_module = GaitCycleLightningModule(hparams)
+    if hparams.train.experiment == "late_fusion":
+        classification_module = LateFusionModule(hparams)
+    else:
+        classification_module = GaitCycleLightningModule(hparams)
 
     data_module = WalkDataModule(hparams, dataset_idx)
 

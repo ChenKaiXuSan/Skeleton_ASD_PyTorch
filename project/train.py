@@ -53,14 +53,8 @@ class GaitCycleLightningModule(LightningModule):
 
         self.num_classes = hparams.model.model_class_num
 
-        self.experiment = hparams.train.experiment
-
         # define model
-        if self.experiment == "late_fusion":
-            self.stance_cnn = MakeVideoModule(hparams)()
-            self.swing_cnn = MakeVideoModule(hparams)()
-        else:
-            self.video_cnn = MakeVideoModule(hparams)() 
+        self.video_cnn = MakeVideoModule(hparams)() 
 
         # save the hyperparameters to the file and ckpt
         self.save_hyperparameters()
@@ -75,7 +69,7 @@ class GaitCycleLightningModule(LightningModule):
         return self.video_cnn(x)
 
     def training_step(self, batch: torch.Tensor, batch_idx: int):
-        # TODO: 不同experiment的处理需要分开写。那么该怎么写才好呢
+        
         # prepare the input and label
         video = batch["video"].detach()  # b, c, t, h, w
         label = batch["label"].detach().float().squeeze()  # b

@@ -1,7 +1,7 @@
 # hydra config
 hydra:
   run:
-    dir: /workspace/skeleton/logs/${model.model}/${now:%Y-%m-%d}/${model.model_class_num}/${now:%H-%M-%S}
+    dir: /workspace/skeleton/logs/${train.experiment}/${model.model}/${now:%Y-%m-%d}/${model.model_class_num}/${now:%H-%M-%S}
 
 optimizer:
   lr: 0.0001
