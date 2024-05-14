@@ -29,9 +29,6 @@ Because in experiment, I found bs=1 will have large loss when train. Maybe also 
 
 # %%
 
-import logging, json, shutil, os
-from pathlib import Path
-
 from torchvision.transforms import (
     Compose,
     Resize,
@@ -58,7 +55,6 @@ disease_to_num_mapping_Dict: Dict = {
     3: {"ASD": 0, "DHS": 1, "LCS_HipOA": 2},
     4: {"ASD": 0, "DHS": 1, "LCS_HipOA": 2, "normal": 3},
 }
-
 
 class WalkDataModule(LightningDataModule):
     def __init__(self, opt, dataset_idx: Dict = None):
@@ -170,7 +166,7 @@ class WalkDataModule(LightningDataModule):
                 temporal_mix=True,
             )
 
-            # test dataset 
+            # test dataset
             self.test_gait_dataset = labeled_gait_video_dataset(
                 gait_cycle=self.gait_cycle,
                 dataset_idx=self._dataset_idx[
@@ -180,7 +176,7 @@ class WalkDataModule(LightningDataModule):
                 temporal_mix=True,
             )
 
-        elif self._experiment == "single":
+        elif "single" in self._experiment:
 
             # train dataset
             if self.gait_cycle == -1:
@@ -215,7 +211,7 @@ class WalkDataModule(LightningDataModule):
             )
 
         elif self._experiment == "late_fusion":
-            
+
             # train dataset
             self.stance_train_gait_dataset = labeled_gait_video_dataset(
                 gait_cycle=0,
@@ -324,7 +320,7 @@ class WalkDataModule(LightningDataModule):
         in directory and subdirectory. Add transform that subsamples and
         normalizes the video before applying the scale, crop and flip augmentations.
         """
-        if self._experiment == "single":
+        if "single" in self._experiment:
             train_data_loader = DataLoader(
                 self.train_gait_dataset,
                 batch_size=self._default_batch_size,
@@ -344,7 +340,7 @@ class WalkDataModule(LightningDataModule):
                 drop_last=True,
                 collate_fn=self.collate_fn,
             )
-        elif self._experiment == "late_fusion": 
+        elif self._experiment == "late_fusion":
             stance_train_data_loader = DataLoader(
                 self.stance_train_gait_dataset,
                 batch_size=self._gait_cycle_batch_size,
@@ -379,7 +375,7 @@ class WalkDataModule(LightningDataModule):
         normalizes the video before applying the scale, crop and flip augmentations.
         """
 
-        if self._experiment == "single":
+        if "single" in self._experiment:
             val_data_loader = DataLoader(
                 self.val_gait_dataset,
                 batch_size=self._default_batch_size,
@@ -403,14 +399,14 @@ class WalkDataModule(LightningDataModule):
             )
 
             return val_data_loader
-        
-        elif self._experiment == "late_fusion": 
+
+        elif self._experiment == "late_fusion":
             stance_val_data_loader = DataLoader(
                 self.stance_val_gait_dataset,
                 batch_size=self._gait_cycle_batch_size,
                 num_workers=self._NUM_WORKERS,
                 pin_memory=True,
-                shuffle=True,
+                shuffle=False,
                 drop_last=True,
                 collate_fn=self.collate_fn,
             )
@@ -420,7 +416,7 @@ class WalkDataModule(LightningDataModule):
                 batch_size=self._gait_cycle_batch_size,
                 num_workers=self._NUM_WORKERS,
                 pin_memory=True,
-                shuffle=True,
+                shuffle=False,
                 drop_last=True,
                 collate_fn=self.collate_fn,
             )
@@ -430,9 +426,9 @@ class WalkDataModule(LightningDataModule):
                 "swing": swing_val_data_loader,
             }
 
-            return CombinedLoader({"stance": stance_val_data_loader,
-                                "swing": swing_val_data_loader
-                                })
+            return CombinedLoader(
+                {"stance": stance_val_data_loader, "swing": swing_val_data_loader}
+            )
 
     def test_dataloader(self) -> DataLoader:
         """
@@ -441,7 +437,7 @@ class WalkDataModule(LightningDataModule):
         normalizes the video before applying the scale, crop and flip augmentations.
         """
 
-        if self._experiment == "single":
+        if "single" in self._experiment:
             val_data_loader = DataLoader(
                 self.val_gait_dataset,
                 batch_size=self._default_batch_size,
@@ -465,24 +461,24 @@ class WalkDataModule(LightningDataModule):
             )
 
             return val_data_loader
-        
-        elif self._experiment == "late_fusion": 
+
+        elif self._experiment == "late_fusion":
             stance_val_data_loader = DataLoader(
                 self.stance_val_gait_dataset,
-                batch_size=self._gait_cycle_batch_size,
+                batch_size=16,
                 num_workers=self._NUM_WORKERS,
                 pin_memory=True,
-                shuffle=True,
+                shuffle=False,
                 drop_last=True,
                 collate_fn=self.collate_fn,
             )
 
             swing_val_data_loader = DataLoader(
                 self.swing_val_gait_dataset,
-                batch_size=self._gait_cycle_batch_size,
+                batch_size=16,
                 num_workers=self._NUM_WORKERS,
                 pin_memory=True,
-                shuffle=True,
+                shuffle=False,
                 drop_last=True,
                 collate_fn=self.collate_fn,
             )
@@ -492,6 +488,6 @@ class WalkDataModule(LightningDataModule):
                 "swing": swing_val_data_loader,
             }
 
-            return CombinedLoader({"stance": stance_val_data_loader,
-                                "swing": swing_val_data_loader
-                                })
+            return CombinedLoader(
+                {"stance": stance_val_data_loader, "swing": swing_val_data_loader}
+            )
