@@ -62,7 +62,7 @@ def train(hparams, dataset_idx, fold):
 
     if hparams.train.experiment == "late_fusion":
         classification_module = LateFusionModule(hparams)
-    elif hparams.train.experiment.includes("single"):
+    elif "single" in hparams.train.experiment:
         classification_module = SingleModule(hparams)
     elif hparams.train.experiment == "temporal_mix":
         classification_module = TemporalMixModule(hparams)
@@ -124,9 +124,10 @@ def train(hparams, dataset_idx, fold):
     trainer.test(
         classification_module,
         data_module,
-    )  # ckpt_path="best")
+    # )
+        ckpt_path="best")
 
-    # save_helper(hparams, classification_module, data_module, fold) # debug only
+    # save_helper(hparams, classification_module, data_module, fold) #! debug only
     save_helper(
         hparams,
         classification_module.load_from_checkpoint(

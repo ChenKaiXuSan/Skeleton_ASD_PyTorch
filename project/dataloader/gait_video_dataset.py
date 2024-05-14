@@ -59,7 +59,8 @@ def split_gait_cycle(video_tensor: torch.Tensor, gait_cycle_index: list, gait_cy
             ans_list.append(video_tensor[gait_cycle_index[i]:gait_cycle_index[i+1], ...])
             use_idx.append(gait_cycle_index[i])
 
-    logging.info(f"used split gait cycle index: {use_idx}")
+    print(f"used split gait cycle index: {use_idx}")
+    
     return ans_list, use_idx # needed gait cycle video tensor
 
 class TemporalMix(object):
@@ -217,7 +218,7 @@ class LabeledGaitVideoDataset(torch.utils.data.Dataset):
         bbox_none_index = file_info_dict["none_index"]
         bbox = file_info_dict["bbox"]
 
-        logging.info(f"video name: {video_name}, gait cycle index: {gait_cycle_index}")
+        print(f"video name: {video_name}, gait cycle index: {gait_cycle_index}")
 
         if self._temporal_mix:
             # should return the new frame, named temporal mix.
@@ -256,7 +257,7 @@ def labeled_gait_video_dataset(
     dataset_idx: Dict = None,
     temporal_mix: bool = False,
 ) -> LabeledGaitVideoDataset:
-
+    # TODO: 这里应该把late fusion的dataloader的方式改一下，因为目前模型并不能收敛。就很奇怪
     dataset = LabeledGaitVideoDataset(
         gait_cycle,
         dataset_idx,

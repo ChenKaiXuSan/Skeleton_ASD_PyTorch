@@ -10,7 +10,7 @@ Comment:
 
 Have a good code time :)
 -----
-Last Modified: Monday May 13th 2024 3:02:39 pm
+Last Modified: Monday May 13th 2024 4:25:25 pm
 Modified By: the developer formerly known as Kaixu Chen at <chenkaixusan@gmail.com>
 -----
 Copyright (c) 2024 The University of Tsukuba
@@ -26,8 +26,6 @@ from pytorch_lightning.utilities.types import STEP_OUTPUT
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-import logging
 
 from pytorch_lightning import LightningModule
 
@@ -78,9 +76,11 @@ class LateFusionModule(LightningModule):
         # keep shape 
         if stance_video.size()[0] > swing_video.size()[0]:
             stance_video = stance_video[:swing_video.size()[0]]
+            stance_label = stance_label[:swing_video.size()[0]]
             label = swing_label
         elif stance_video.size()[0] < swing_video.size()[0]:
             swing_video = swing_video[:stance_video.size()[0]]
+            swing_label = swing_label[:stance_video.size()[0]]
             label = stance_label
         else:
             label = stance_label
@@ -89,15 +89,24 @@ class LateFusionModule(LightningModule):
         if stance_video.size()[0] + swing_video.size()[0] >= 30:
             stance_preds = self.stance_cnn(stance_video[:14])
             swing_preds = self.swing_cnn(swing_video[:14])
+            stance_label = stance_label[:14]
+            swing_label = swing_label[:14]
             label = label[:14]
         else:
             stance_preds = self.stance_cnn(stance_video)
             swing_preds = self.swing_cnn(swing_video)
 
+        # stance loss 
+        stance_loss = F.cross_entropy(stance_preds, stance_label.long())
+
+        # swing loss 
+        swing_loss = F.cross_entropy(swing_preds, swing_label.long())
+
         predict = (stance_preds + swing_preds) / 2 
         predict_softmax = torch.softmax(predict, dim=1)
 
-        loss = F.cross_entropy(predict, label.long())
+        # loss = F.cross_entropy(predict, label.long())
+        loss = (stance_loss + swing_loss) / 2
 
         self.log("train/loss", loss, on_epoch=True, on_step=True, batch_size=label.size()[0])
 
@@ -134,9 +143,11 @@ class LateFusionModule(LightningModule):
         # keep shape 
         if stance_video.size()[0] > swing_video.size()[0]:
             stance_video = stance_video[:swing_video.size()[0]]
+            stance_label = stance_label[:swing_video.size()[0]]
             label = swing_label
         elif stance_video.size()[0] < swing_video.size()[0]:
             swing_video = swing_video[:stance_video.size()[0]]
+            swing_label = swing_label[:stance_video.size()[0]]
             label = stance_label
         else:
             label = stance_label
@@ -145,15 +156,24 @@ class LateFusionModule(LightningModule):
         if stance_video.size()[0] + swing_video.size()[0] >= 30:
             stance_preds = self.stance_cnn(stance_video[:14])
             swing_preds = self.swing_cnn(swing_video[:14])
+            stance_label = stance_label[:14]
+            swing_label = swing_label[:14]
             label = label[:14]
         else:
             stance_preds = self.stance_cnn(stance_video)
             swing_preds = self.swing_cnn(swing_video)
 
+        # stance loss 
+        stance_loss = F.cross_entropy(stance_preds, stance_label.long())
+
+        # swing loss 
+        swing_loss = F.cross_entropy(swing_preds, swing_label.long())
+
         predict = (stance_preds + swing_preds) / 2 
         predict_softmax = torch.softmax(predict, dim=1)
 
-        loss = F.cross_entropy(predict, label.long())
+        # loss = F.cross_entropy(predict, label.long())
+        loss = (stance_loss + swing_loss) / 2
 
         self.log("val/loss", loss, on_epoch=True, on_step=True, batch_size=label.size()[0])
 
@@ -189,9 +209,11 @@ class LateFusionModule(LightningModule):
         # keep shape 
         if stance_video.size()[0] > swing_video.size()[0]:
             stance_video = stance_video[:swing_video.size()[0]]
+            stance_label = stance_label[:swing_video.size()[0]]
             label = swing_label
         elif stance_video.size()[0] < swing_video.size()[0]:
             swing_video = swing_video[:stance_video.size()[0]]
+            swing_label = swing_label[:stance_video.size()[0]]
             label = stance_label
         else:
             label = stance_label
@@ -200,15 +222,24 @@ class LateFusionModule(LightningModule):
         if stance_video.size()[0] + swing_video.size()[0] >= 30:
             stance_preds = self.stance_cnn(stance_video[:14])
             swing_preds = self.swing_cnn(swing_video[:14])
+            stance_label = stance_label[:14]
+            swing_label = swing_label[:14]
             label = label[:14]
         else:
             stance_preds = self.stance_cnn(stance_video)
             swing_preds = self.swing_cnn(swing_video)
 
+        # stance loss 
+        stance_loss = F.cross_entropy(stance_preds, stance_label.long())
+
+        # swing loss 
+        swing_loss = F.cross_entropy(swing_preds, swing_label.long())
+
         predict = (stance_preds + swing_preds) / 2 
         predict_softmax = torch.softmax(predict, dim=1)
 
-        loss = F.cross_entropy(predict, label.long())
+        # loss = F.cross_entropy(predict, label.long())
+        loss = (stance_loss + swing_loss) / 2
 
         self.log("test/loss", loss, on_epoch=True, on_step=True, batch_size=label.size()[0])
 
