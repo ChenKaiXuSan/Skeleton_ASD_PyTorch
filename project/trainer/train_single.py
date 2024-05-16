@@ -10,12 +10,14 @@ Comment:
 
 Have a good code time!
 -----
-Last Modified: Sunday May 12th 2024 6:00:19 am
+Last Modified: Monday May 13th 2024 4:25:14 pm
 Modified By: the developer formerly known as Kaixu Chen at <chenkaixusan@gmail.com>
 -----
 HISTORY:
 Date 	By 	Comments
 ------------------------------------------------
+
+16-05-2024	Kaixu Chen	do not output metrics in test_step to log file.
 
 22-03-2024	Kaixu Chen	add different class number mapping, now the class number is a hyperparameter.
 
@@ -167,7 +169,7 @@ class SingleModule(LightningModule):
 
         loss = F.cross_entropy(video_preds, label.long())
 
-        self.log("val/loss", loss, on_epoch=True, on_step=True)
+        self.log("test/loss", loss, on_epoch=True, on_step=True)
 
         # log metrics
         video_acc = self._accuracy(video_preds_softmax, label)
@@ -176,19 +178,12 @@ class SingleModule(LightningModule):
         video_f1_score = self._f1_score(video_preds_softmax, label)
         video_confusion_matrix = self._confusion_matrix(video_preds_softmax, label)
 
-        logging.info(f"video_acc: {video_acc}")
-        logging.info(f"video_precision: {video_precision}")
-        logging.info(f"video_recall: {video_recall}")
-        logging.info(f"video_f1_score: {video_f1_score}")
-        logging.info(f"video_confusion_matrix: {video_confusion_matrix}")
-
-        
         self.log_dict(
             {
-                "val/video_acc": video_acc,
-                "val/video_precision": video_precision,
-                "val/video_recall": video_recall,
-                "val/video_f1_score": video_f1_score,
+                "test/video_acc": video_acc,
+                "test/video_precision": video_precision,
+                "test/video_recall": video_recall,
+                "test/video_f1_score": video_f1_score,
             },
             on_epoch=True, on_step=True, batch_size=b
         )

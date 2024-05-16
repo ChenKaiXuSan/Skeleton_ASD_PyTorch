@@ -167,7 +167,7 @@ class TemporalMixModule(LightningModule):
 
         loss = F.cross_entropy(video_preds, label.long())
 
-        self.log("val/loss", loss, on_epoch=True, on_step=True)
+        self.log("test/loss", loss, on_epoch=True, on_step=True)
 
         # log metrics
         video_acc = self._accuracy(video_preds_softmax, label)
@@ -175,20 +175,13 @@ class TemporalMixModule(LightningModule):
         video_recall = self._recall(video_preds_softmax, label)
         video_f1_score = self._f1_score(video_preds_softmax, label)
         video_confusion_matrix = self._confusion_matrix(video_preds_softmax, label)
-
-        logging.info(f"video_acc: {video_acc}")
-        logging.info(f"video_precision: {video_precision}")
-        logging.info(f"video_recall: {video_recall}")
-        logging.info(f"video_f1_score: {video_f1_score}")
-        logging.info(f"video_confusion_matrix: {video_confusion_matrix}")
-
         
         self.log_dict(
             {
-                "val/video_acc": video_acc,
-                "val/video_precision": video_precision,
-                "val/video_recall": video_recall,
-                "val/video_f1_score": video_f1_score,
+                "test/video_acc": video_acc,
+                "test/video_precision": video_precision,
+                "test/video_recall": video_recall,
+                "test/video_f1_score": video_f1_score,
             },
             on_epoch=True, on_step=True, batch_size=b
         )

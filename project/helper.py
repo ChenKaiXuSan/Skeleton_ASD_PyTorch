@@ -35,7 +35,8 @@ from pathlib import Path
 from typing import Any
 import matplotlib.pyplot as plt
 import seaborn as sns
-import numpy as np 
+import numpy as np
+import random
 import torch
 
 from torchmetrics.classification import (
@@ -62,25 +63,21 @@ from captum.attr import visualization as viz
 
 
 def save_helper(config, model, dataloader, fold):
-
+    
     if config.train.experiment == "late_fusion":
-        total_pred, total_label, total_stance_video, total_swing_video = save_inference_late_fusion(
+        total_pred, total_label = save_inference_late_fusion(
             config, model, dataloader, fold
         )
-        save_CAM(config, model.stance_cnn, total_stance_video, total_label, fold, "stance")
-        save_CAM(config, model.swing_cnn, total_swing_video, total_label, fold, "swing")
 
     else:
         total_pred, total_label = save_inference(config, model, dataloader, fold)
-        save_CAM(config, model.video_cnn, total_stance_video, total_label, fold, "stance")
 
     save_metrics(total_pred, total_label, fold, config)
     save_CM(total_pred, total_label, fold, config)
 
+
 def save_inference_late_fusion(config, model, dataloader, fold):
 
-    total_stance_video_list = []
-    total_swing_video_list = []
     total_pred_list = []
     total_label_list = []
 
@@ -116,14 +113,31 @@ def save_inference_late_fusion(config, model, dataloader, fold):
         swing_cnn.eval().to(device)
 
         with torch.no_grad():
-            stance_preds = stance_cnn(stance_video)
-            swing_preds = swing_cnn(swing_video)
+                
+            # * slove OOM problem, cut the large batch, when >= 30 
+            if stance_video.size()[0] + swing_video.size()[0] >= 30:
+                stance_preds = stance_cnn(stance_video[:14])
+                swing_preds = swing_cnn(swing_video[:14])
+
+                stance_label = stance_label[:14]
+                swing_label = swing_label[:14]
+                label = label[:14]
+
+                stance_video = stance_video[:14]
+                swing_video = swing_video[:14]
+
+            else:
+                stance_preds = stance_cnn(stance_video)
+                swing_preds = swing_cnn(swing_video)
 
         predict = (stance_preds + swing_preds) / 2
         preds_softmax = torch.softmax(predict, dim=1)
 
-        total_stance_video_list.append(stance_video[:5])
-        total_swing_video_list.append(swing_video[:5])
+        # * Since saving the video tensor is too GPU memory intensive, the content is extracted in a batch to be saved
+        # * 从一个batch里面随机选取5个样本进行保存
+        random_index = random.sample(range(0, stance_video.size()[0]), 5)
+        save_CAM(config, stance_cnn, stance_video, stance_label, fold, "stance", i, random_index)
+        save_CAM(config, swing_cnn, swing_video, swing_label, fold, "swing", i, random_index)
 
         for i in preds_softmax.tolist():
             total_pred_list.append(i)
@@ -152,7 +166,7 @@ def save_inference_late_fusion(config, model, dataloader, fold):
         f"save the pred and label into {save_path}/{config.model.model}_{config.data.sampling}_{fold}"
     )
 
-    return pred, label, total_stance_video_list, total_swing_video_list
+    return pred, label
 
 
 def save_inference(config, model, dataloader, fold):
@@ -185,6 +199,10 @@ def save_inference(config, model, dataloader, fold):
         else:
             preds_softmax = torch.softmax(preds, dim=1)
 
+        save_CAM(
+            config, model.video_cnn, video, label, fold, config.train.experiment, i
+        )
+
         for i in preds_softmax.tolist():
             total_pred_list.append(i)
         for i in label.tolist():
@@ -216,6 +234,14 @@ def save_inference(config, model, dataloader, fold):
 
 
 def save_metrics(all_pred, all_label, fold, config):
+    """save the final metrics into the log file, cross whole pred and label.
+
+    Args:
+        all_pred (torch.tensor): all the prediction of the model.
+        all_label (torch.tensor): all the label of the model.
+        fold (int): the fold number.
+        config (hydra): the config file.
+    """
 
     save_path = Path(config.train.log_path) / "metrics.txt"
 
@@ -250,6 +276,14 @@ def save_metrics(all_pred, all_label, fold, config):
 
 
 def save_CM(all_pred, all_label, fold, config):
+    """save the confusion matrix into file.
+
+    Args:
+        all_pred (torch.tensor): all the prediction of the model.
+        all_label (torch.tensor): all the label of the model.
+        fold (int): the fold number.
+        config (hydra): the config file.
+    """
 
     save_path = Path(config.train.log_path) / "CM"
 
@@ -265,7 +299,6 @@ def save_CM(all_pred, all_label, fold, config):
     # 设置字体和标题样式
     plt.rcParams.update({"font.size": 30, "font.family": "sans-serif"})
 
-    # 假设的混淆矩阵数据
     confusion_matrix_data = _confusion_matrix(all_pred, all_label).cpu().numpy() * 100
 
     axis_labels = ["ASD", "DHS", "LCS_HipOA"]
@@ -295,7 +328,9 @@ def save_CM(all_pred, all_label, fold, config):
     )
 
 
-def save_CAM(config, model: torch.nn.Module, input_tensor: torch.Tensor, inp_label, fold, flag):
+def save_CAM(
+    config, model: torch.nn.Module, input_tensor: torch.Tensor, inp_label, fold, flag, i, random_index
+):
 
     # guided grad cam method
     target_layer = [model.blocks[-2].res_blocks[-1]]
@@ -303,42 +338,37 @@ def save_CAM(config, model: torch.nn.Module, input_tensor: torch.Tensor, inp_lab
 
     cam = GradCAMPlusPlus(model, target_layer)
 
-    # * 按照batch进行CAM，每一个batch只取一个样本进行保存。
-    for i, one_batch in enumerate(input_tensor):
+    
+    # save the CAM
+    save_path = Path(config.train.log_path) / "CAM" / f"fold{fold}" / flag
 
-        grayscale_cam = cam(one_batch, aug_smooth=True, eigen_smooth=True)
+    if save_path.exists() is False:
+        save_path.mkdir(parents=True)
+
+    for idx, num in enumerate(random_index):
+
+        grayscale_cam = cam(input_tensor[num:num+1], aug_smooth=True, eigen_smooth=True)
         output = cam.outputs
 
-        # use captum visual method, Compression Display
-        inp_tensor = one_batch[-1].permute(1,2,3,0)[-1].cpu().detach().numpy()
-        cam_map = grayscale_cam[-1].mean(axis=2)
-        cam_map = np.expand_dims(cam_map, 2)
+        # prepare save figure
+        inp_tensor = input_tensor[num].permute(1, 2, 3, 0)[-1].cpu().detach().numpy() # display original image
+        cam_map = grayscale_cam.squeeze().mean(axis=2, keepdims=True)
 
-        figure, axis = viz.visualize_image_attr_multiple(
+        figure, axis = viz.visualize_image_attr(
             cam_map,
             inp_tensor,
-            methods=["original_image", "blended_heat_map"],
-            signs=["all", "positive"],
+            method="blended_heat_map",
+            sign="positive",
             show_colorbar=True,
-            outlier_perc=1,
             cmap="jet",
-            titles=["original image", "GradCAM++, label %s" % int(inp_label[-1])],
+            title=f"label: {int(inp_label[num])}, pred: {output.argmax(dim=1)[0]}",
         )
-
-        # save the CAM
-        save_path = Path(config.train.log_path) / "CAM" / f"fold{fold}" / flag
-
-        if save_path.exists() is False:
-            save_path.mkdir(parents=True)
 
         figure.savefig(
-            save_path / f"fold{fold}_{flag}_{i}.png", dpi=300, bbox_inches="tight"
+            save_path / f"fold{fold}_{flag}_step{i}_num{idx}_{num}.png",
         )
 
-        # save with pytorch_grad_cam
-        visualization = show_cam_on_image(inp_tensor, cam_map, use_rgb=True)
+    # save with pytorch_grad_cam
+    # visualization = show_cam_on_image(inp_tensor, cam_map, use_rgb=True)
 
-
-    logging.info(
-        f"save the CAM into {save_path}"
-    )
+    print(f"save the CAM into {save_path}")
