@@ -91,23 +91,11 @@ def save_inference_late_fusion(config, model, dataloader, fold):
 
         # if i == 5: break; # ! debug only
 
-        stance_video = batch["stance"]["video"].detach().to(device)  # b, c, t, h, w
-        stance_label = batch["stance"]["label"].detach().float().to(device)  # b
-
-        swing_video = batch["swing"]["video"].detach().to(device)  # b, c, t, h, w
-        swing_label = batch["swing"]["label"].detach().float().to(device)  # b
-
+        stance_video = batch["video"][...,0].detach()  # b, c, t, h, w
+        swing_video = batch["video"][...,1].detach()  # b, c, t, h, w
         # sample_info = batch["info"] # b is the video instance number
 
-        # keep shape
-        if stance_video.size()[0] > swing_video.size()[0]:
-            stance_video = stance_video[: swing_video.size()[0]]
-            label = swing_label
-        elif stance_video.size()[0] < swing_video.size()[0]:
-            swing_video = swing_video[: stance_video.size()[0]]
-            label = stance_label
-        else:
-            label = stance_label
+        label = batch["label"]
 
         stance_cnn.eval().to(device)
         swing_cnn.eval().to(device)
@@ -119,8 +107,6 @@ def save_inference_late_fusion(config, model, dataloader, fold):
                 stance_preds = stance_cnn(stance_video[:14])
                 swing_preds = swing_cnn(swing_video[:14])
 
-                stance_label = stance_label[:14]
-                swing_label = swing_label[:14]
                 label = label[:14]
 
                 stance_video = stance_video[:14]
@@ -134,10 +120,9 @@ def save_inference_late_fusion(config, model, dataloader, fold):
         preds_softmax = torch.softmax(predict, dim=1)
 
         # * Since saving the video tensor is too GPU memory intensive, the content is extracted in a batch to be saved
-        # * 从一个batch里面随机选取5个样本进行保存
         random_index = random.sample(range(0, stance_video.size()[0]), 5)
-        save_CAM(config, stance_cnn, stance_video, stance_label, fold, "stance", i, random_index)
-        save_CAM(config, swing_cnn, swing_video, swing_label, fold, "swing", i, random_index)
+        save_CAM(config, stance_cnn, stance_video, label, fold, "stance", i, random_index)
+        save_CAM(config, swing_cnn, swing_video, label, fold, "swing", i, random_index)
 
         for i in preds_softmax.tolist():
             total_pred_list.append(i)

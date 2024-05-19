@@ -10,7 +10,7 @@ Comment:
 
 Have a good code time :)
 -----
-Last Modified: Monday May 13th 2024 4:25:25 pm
+Last Modified: Thursday May 16th 2024 7:41:45 am
 Modified By: the developer formerly known as Kaixu Chen at <chenkaixusan@gmail.com>
 -----
 Copyright (c) 2024 The University of Tsukuba
@@ -65,42 +65,26 @@ class LateFusionModule(LightningModule):
 
     def training_step(self, batch: torch.Tensor, batch_idx: int):
 
-        stance_video = batch["stance"]['video'].detach()  # b, c, t, h, w
-        stance_label = batch["stance"]['label'].detach().float() # b
-
-        swing_video = batch["swing"]['video'].detach()  # b, c, t, h, w
-        swing_label = batch["swing"]['label'].detach().float() # b
-
+        stance_video = batch["video"][...,0].detach()  # b, c, t, h, w
+        swing_video = batch["video"][...,1].detach()  # b, c, t, h, w
         # sample_info = batch["info"] # b is the video instance number
 
-        # keep shape 
-        if stance_video.size()[0] > swing_video.size()[0]:
-            stance_video = stance_video[:swing_video.size()[0]]
-            stance_label = stance_label[:swing_video.size()[0]]
-            label = swing_label
-        elif stance_video.size()[0] < swing_video.size()[0]:
-            swing_video = swing_video[:stance_video.size()[0]]
-            swing_label = swing_label[:stance_video.size()[0]]
-            label = stance_label
-        else:
-            label = stance_label
+        label = batch["label"]
 
         # * slove OOM problem, cut the large batch, when >= 30 
         if stance_video.size()[0] + swing_video.size()[0] >= 30:
             stance_preds = self.stance_cnn(stance_video[:14])
             swing_preds = self.swing_cnn(swing_video[:14])
-            stance_label = stance_label[:14]
-            swing_label = swing_label[:14]
             label = label[:14]
         else:
             stance_preds = self.stance_cnn(stance_video)
             swing_preds = self.swing_cnn(swing_video)
 
         # stance loss 
-        stance_loss = F.cross_entropy(stance_preds, stance_label.long())
+        stance_loss = F.cross_entropy(stance_preds, label.long())
 
         # swing loss 
-        swing_loss = F.cross_entropy(swing_preds, swing_label.long())
+        swing_loss = F.cross_entropy(swing_preds, label.long())
 
         predict = (stance_preds + swing_preds) / 2 
         predict_softmax = torch.softmax(predict, dim=1)
@@ -132,42 +116,26 @@ class LateFusionModule(LightningModule):
 
     def validation_step(self, batch: torch.Tensor, batch_idx: int):
 
-        stance_video = batch["stance"]['video'].detach()  # b, c, t, h, w
-        stance_label = batch["stance"]['label'].detach().float() # b
-
-        swing_video = batch["swing"]['video'].detach()  # b, c, t, h, w
-        swing_label = batch["swing"]['label'].detach().float() # b
-
+        stance_video = batch["video"][...,0].detach()  # b, c, t, h, w
+        swing_video = batch["video"][...,1].detach()  # b, c, t, h, w
         # sample_info = batch["info"] # b is the video instance number
 
-        # keep shape 
-        if stance_video.size()[0] > swing_video.size()[0]:
-            stance_video = stance_video[:swing_video.size()[0]]
-            stance_label = stance_label[:swing_video.size()[0]]
-            label = swing_label
-        elif stance_video.size()[0] < swing_video.size()[0]:
-            swing_video = swing_video[:stance_video.size()[0]]
-            swing_label = swing_label[:stance_video.size()[0]]
-            label = stance_label
-        else:
-            label = stance_label
+        label = batch["label"]
 
         # * slove OOM problem, cut the large batch, when >= 30 
         if stance_video.size()[0] + swing_video.size()[0] >= 30:
             stance_preds = self.stance_cnn(stance_video[:14])
             swing_preds = self.swing_cnn(swing_video[:14])
-            stance_label = stance_label[:14]
-            swing_label = swing_label[:14]
             label = label[:14]
         else:
             stance_preds = self.stance_cnn(stance_video)
             swing_preds = self.swing_cnn(swing_video)
 
         # stance loss 
-        stance_loss = F.cross_entropy(stance_preds, stance_label.long())
+        stance_loss = F.cross_entropy(stance_preds, label.long())
 
         # swing loss 
-        swing_loss = F.cross_entropy(swing_preds, swing_label.long())
+        swing_loss = F.cross_entropy(swing_preds, label.long())
 
         predict = (stance_preds + swing_preds) / 2 
         predict_softmax = torch.softmax(predict, dim=1)
@@ -194,46 +162,28 @@ class LateFusionModule(LightningModule):
             on_epoch=True, on_step=True, batch_size=label.size()[0]
         )
 
-
-
     def test_step(self, batch: torch.Tensor, batch_idx: int):
 
-        stance_video = batch["stance"]['video'].detach()  # b, c, t, h, w
-        stance_label = batch["stance"]['label'].detach().float() # b
-
-        swing_video = batch["swing"]['video'].detach()  # b, c, t, h, w
-        swing_label = batch["swing"]['label'].detach().float() # b
-
+        stance_video = batch["video"][...,0].detach()  # b, c, t, h, w
+        swing_video = batch["video"][...,1].detach()  # b, c, t, h, w
         # sample_info = batch["info"] # b is the video instance number
 
-        # keep shape 
-        if stance_video.size()[0] > swing_video.size()[0]:
-            stance_video = stance_video[:swing_video.size()[0]]
-            stance_label = stance_label[:swing_video.size()[0]]
-            label = swing_label
-        elif stance_video.size()[0] < swing_video.size()[0]:
-            swing_video = swing_video[:stance_video.size()[0]]
-            swing_label = swing_label[:stance_video.size()[0]]
-            label = stance_label
-        else:
-            label = stance_label
+        label = batch["label"]
 
         # * slove OOM problem, cut the large batch, when >= 30 
         if stance_video.size()[0] + swing_video.size()[0] >= 30:
             stance_preds = self.stance_cnn(stance_video[:14])
             swing_preds = self.swing_cnn(swing_video[:14])
-            stance_label = stance_label[:14]
-            swing_label = swing_label[:14]
             label = label[:14]
         else:
             stance_preds = self.stance_cnn(stance_video)
             swing_preds = self.swing_cnn(swing_video)
 
         # stance loss 
-        stance_loss = F.cross_entropy(stance_preds, stance_label.long())
+        stance_loss = F.cross_entropy(stance_preds, label.long())
 
         # swing loss 
-        swing_loss = F.cross_entropy(swing_preds, swing_label.long())
+        swing_loss = F.cross_entropy(swing_preds, label.long())
 
         predict = (stance_preds + swing_preds) / 2 
         predict_softmax = torch.softmax(predict, dim=1)

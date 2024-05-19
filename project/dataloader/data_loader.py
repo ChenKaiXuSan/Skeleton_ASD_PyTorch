@@ -148,38 +148,35 @@ class WalkDataModule(LightningDataModule):
 
             # train dataset
             self.train_gait_dataset = labeled_gait_video_dataset(
-                gait_cycle=self.gait_cycle,
+                experiment=self._experiment,
                 dataset_idx=self._dataset_idx[
                     0
                 ],  # train mapped path, include gait cycle index.
                 transform=self.mapping_transform,
-                temporal_mix=True,
             )
 
             # val dataset
             self.val_gait_dataset = labeled_gait_video_dataset(
-                gait_cycle=self.gait_cycle,
+                experiment=self._experiment,
                 dataset_idx=self._dataset_idx[
                     1
                 ],  # val mapped path, include gait cycle index.
                 transform=self.mapping_transform,
-                temporal_mix=True,
             )
 
             # test dataset
             self.test_gait_dataset = labeled_gait_video_dataset(
-                gait_cycle=self.gait_cycle,
+                experiment=self._experiment,
                 dataset_idx=self._dataset_idx[
                     1
                 ],  # val mapped path, include gait cycle index.
                 transform=self.mapping_transform,
-                temporal_mix=True,
             )
 
         elif "single" in self._experiment:
 
             # train dataset
-            if self.gait_cycle == -1:
+            if self._experiment == "single_random":
                 self.train_gait_dataset = labeled_video_dataset(
                     data_path=self._dataset_idx[2],
                     clip_sampler=make_clip_sampler("uniform", self._CLIP_DURATION),
@@ -188,12 +185,11 @@ class WalkDataModule(LightningDataModule):
 
             else:
                 self.train_gait_dataset = labeled_gait_video_dataset(
-                    gait_cycle=self.gait_cycle,
+                    experiment=self._experiment,
                     dataset_idx=self._dataset_idx[
                         0
                     ],  # train mapped path, include gait cycle index.
                     transform=self.mapping_transform,
-                    temporal_mix=False,
                 )
 
             # val dataset
@@ -213,57 +209,30 @@ class WalkDataModule(LightningDataModule):
         elif self._experiment == "late_fusion":
 
             # train dataset
-            self.stance_train_gait_dataset = labeled_gait_video_dataset(
-                gait_cycle=0,
+            self.train_gait_dataset = labeled_gait_video_dataset(
+                experiment=self._experiment,
                 dataset_idx=self._dataset_idx[
                     0
                 ],  # train mapped path, include gait cycle index.
                 transform=self.mapping_transform,
-                temporal_mix=False,
             )
-            self.swing_train_gait_dataset = labeled_gait_video_dataset(
-                gait_cycle=1,
-                dataset_idx=self._dataset_idx[
-                    0
-                ],  # train mapped path, include gait cycle index.
-                transform=self.mapping_transform,
-                temporal_mix=False,
-            )
-
+            
             # val dataset
-            self.stance_val_gait_dataset = labeled_gait_video_dataset(
-                gait_cycle=0,
+            self.val_gait_dataset = labeled_gait_video_dataset(
+                experiment=self._experiment,
                 dataset_idx=self._dataset_idx[
                     1
                 ],  # val mapped path, include gait cycle index.
                 transform=self.mapping_transform,
-                temporal_mix=False,
-            )
-            self.swing_val_gait_dataset = labeled_gait_video_dataset(
-                gait_cycle=1,
-                dataset_idx=self._dataset_idx[
-                    1
-                ],  # val mapped path, include gait cycle index.
-                transform=self.mapping_transform,
-                temporal_mix=False,
             )
 
             # test dataset
-            self.stance_test_gait_dataset = labeled_gait_video_dataset(
-                gait_cycle=0,
+            self.test_gait_dataset = labeled_gait_video_dataset(
+                experiment=self._experiment,
                 dataset_idx=self._dataset_idx[
                     1
                 ],  # val mapped path, include gait cycle index.
                 transform=self.mapping_transform,
-                temporal_mix=False,
-            )
-            self.swing_test_gait_dataset = labeled_gait_video_dataset(
-                gait_cycle=1,
-                dataset_idx=self._dataset_idx[
-                    1
-                ],  # val mapped path, include gait cycle index.
-                transform=self.mapping_transform,
-                temporal_mix=False,
             )
 
         else:
@@ -284,11 +253,10 @@ class WalkDataModule(LightningDataModule):
         batch_label = []
         batch_video = []
 
-        # mapping label
-
+        # * mapping label
         for i in batch:
             # logging.info(i['video'].shape)
-            gait_num, c, t, h, w = i["video"].shape
+            gait_num, *_= i["video"].shape
             disease = i["disease"]
 
             batch_video.append(i["video"])
@@ -320,7 +288,8 @@ class WalkDataModule(LightningDataModule):
         in directory and subdirectory. Add transform that subsamples and
         normalizes the video before applying the scale, crop and flip augmentations.
         """
-        if "single" in self._experiment:
+
+        if self._experiment == "single_random":
             train_data_loader = DataLoader(
                 self.train_gait_dataset,
                 batch_size=self._default_batch_size,
@@ -329,8 +298,7 @@ class WalkDataModule(LightningDataModule):
                 shuffle=False,
                 drop_last=True,
             )
-
-        elif self._experiment == "temporal_mix":
+        else:
             train_data_loader = DataLoader(
                 self.train_gait_dataset,
                 batch_size=self._gait_cycle_batch_size,
@@ -340,32 +308,7 @@ class WalkDataModule(LightningDataModule):
                 drop_last=True,
                 collate_fn=self.collate_fn,
             )
-        elif self._experiment == "late_fusion":
-            stance_train_data_loader = DataLoader(
-                self.stance_train_gait_dataset,
-                batch_size=self._gait_cycle_batch_size,
-                num_workers=self._NUM_WORKERS,
-                pin_memory=True,
-                shuffle=False,
-                drop_last=True,
-                collate_fn=self.collate_fn,
-            )
-
-            swing_train_data_loader = DataLoader(
-                self.swing_train_gait_dataset,
-                batch_size=self._gait_cycle_batch_size,
-                num_workers=self._NUM_WORKERS,
-                pin_memory=True,
-                shuffle=False,
-                drop_last=True,
-                collate_fn=self.collate_fn,
-            )
-
-            train_data_loader = {
-                "stance": stance_train_data_loader,
-                "swing": swing_train_data_loader,
-            }
-
+        
         return train_data_loader
 
     def val_dataloader(self) -> DataLoader:
@@ -384,10 +327,7 @@ class WalkDataModule(LightningDataModule):
                 shuffle=False,
                 drop_last=True,
             )
-
-            return val_data_loader
-
-        elif self._experiment == "temporal_mix":
+        else:
             val_data_loader = DataLoader(
                 self.val_gait_dataset,
                 batch_size=self._gait_cycle_batch_size,
@@ -397,38 +337,8 @@ class WalkDataModule(LightningDataModule):
                 drop_last=True,
                 collate_fn=self.collate_fn,
             )
-
-            return val_data_loader
-
-        elif self._experiment == "late_fusion":
-            stance_val_data_loader = DataLoader(
-                self.stance_val_gait_dataset,
-                batch_size=self._gait_cycle_batch_size,
-                num_workers=self._NUM_WORKERS,
-                pin_memory=True,
-                shuffle=False,
-                drop_last=True,
-                collate_fn=self.collate_fn,
-            )
-
-            swing_val_data_loader = DataLoader(
-                self.swing_val_gait_dataset,
-                batch_size=self._gait_cycle_batch_size,
-                num_workers=self._NUM_WORKERS,
-                pin_memory=True,
-                shuffle=False,
-                drop_last=True,
-                collate_fn=self.collate_fn,
-            )
-
-            val_data_loader = {
-                "stance": stance_val_data_loader,
-                "swing": swing_val_data_loader,
-            }
-
-            return CombinedLoader(
-                {"stance": stance_val_data_loader, "swing": swing_val_data_loader}
-            )
+        
+        return val_data_loader
 
     def test_dataloader(self) -> DataLoader:
         """
@@ -437,6 +347,7 @@ class WalkDataModule(LightningDataModule):
         normalizes the video before applying the scale, crop and flip augmentations.
         """
 
+        
         if "single" in self._experiment:
             val_data_loader = DataLoader(
                 self.val_gait_dataset,
@@ -446,10 +357,7 @@ class WalkDataModule(LightningDataModule):
                 shuffle=False,
                 drop_last=True,
             )
-
-            return val_data_loader
-
-        elif self._experiment == "temporal_mix":
+        else:
             val_data_loader = DataLoader(
                 self.val_gait_dataset,
                 batch_size=self._gait_cycle_batch_size,
@@ -459,35 +367,5 @@ class WalkDataModule(LightningDataModule):
                 drop_last=True,
                 collate_fn=self.collate_fn,
             )
-
-            return val_data_loader
-
-        elif self._experiment == "late_fusion":
-            stance_val_data_loader = DataLoader(
-                self.stance_val_gait_dataset,
-                batch_size=16,
-                num_workers=self._NUM_WORKERS,
-                pin_memory=True,
-                shuffle=False,
-                drop_last=True,
-                collate_fn=self.collate_fn,
-            )
-
-            swing_val_data_loader = DataLoader(
-                self.swing_val_gait_dataset,
-                batch_size=16,
-                num_workers=self._NUM_WORKERS,
-                pin_memory=True,
-                shuffle=False,
-                drop_last=True,
-                collate_fn=self.collate_fn,
-            )
-
-            val_data_loader = {
-                "stance": stance_val_data_loader,
-                "swing": swing_val_data_loader,
-            }
-
-            return CombinedLoader(
-                {"stance": stance_val_data_loader, "swing": swing_val_data_loader}
-            )
+        
+        return val_data_loader
