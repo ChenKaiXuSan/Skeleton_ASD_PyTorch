@@ -46,6 +46,7 @@ import hydra
 from cross_validation import DefineCrossValidation
 from helper import save_helper
 
+
 def train(hparams, dataset_idx, fold):
     """the train process for the one fold.
 
@@ -124,8 +125,9 @@ def train(hparams, dataset_idx, fold):
     trainer.test(
         classification_module,
         data_module,
-    # )
-        ckpt_path="best")
+        # ) 
+        ckpt_path="best",
+    )
 
     # save_helper(hparams, classification_module, data_module, fold) #! debug only
     save_helper(

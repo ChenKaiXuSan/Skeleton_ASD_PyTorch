@@ -91,8 +91,8 @@ def save_inference_late_fusion(config, model, dataloader, fold):
 
         # if i == 5: break; # ! debug only
 
-        stance_video = batch["video"][...,0].detach()  # b, c, t, h, w
-        swing_video = batch["video"][...,1].detach()  # b, c, t, h, w
+        stance_video = batch["video"][...,0].detach().to(f"cuda:{config.train.gpu_num}") # b, c, t, h, w
+        swing_video = batch["video"][...,1].detach().to(f"cuda:{config.train.gpu_num}")  # b, c, t, h, w
         # sample_info = batch["info"] # b is the video instance number
 
         label = batch["label"]
@@ -103,16 +103,16 @@ def save_inference_late_fusion(config, model, dataloader, fold):
         with torch.no_grad():
                 
             # * slove OOM problem, cut the large batch, when >= 30 
-            if stance_video.size()[0] + swing_video.size()[0] >= 30:
-                stance_preds = stance_cnn(stance_video[:14])
-                swing_preds = swing_cnn(swing_video[:14])
+            # if stance_video.size()[0] + swing_video.size()[0] >= 30:
+            #     stance_preds = stance_cnn(stance_video[:14])
+            #     swing_preds = swing_cnn(swing_video[:14])
 
-                label = label[:14]
+            #     label = label[:14]
 
-                stance_video = stance_video[:14]
-                swing_video = swing_video[:14]
+            #     stance_video = stance_video[:14]
+            #     swing_video = swing_video[:14]
 
-            else:
+            # else:
                 stance_preds = stance_cnn(stance_video)
                 swing_preds = swing_cnn(swing_video)
 
@@ -120,7 +120,7 @@ def save_inference_late_fusion(config, model, dataloader, fold):
         preds_softmax = torch.softmax(predict, dim=1)
 
         # * Since saving the video tensor is too GPU memory intensive, the content is extracted in a batch to be saved
-        random_index = random.sample(range(0, stance_video.size()[0]), 5)
+        random_index = random.sample(range(0, stance_video.size()[0]), 2)
         save_CAM(config, stance_cnn, stance_video, label, fold, "stance", i, random_index)
         save_CAM(config, swing_cnn, swing_video, label, fold, "swing", i, random_index)
 
@@ -184,8 +184,9 @@ def save_inference(config, model, dataloader, fold):
         else:
             preds_softmax = torch.softmax(preds, dim=1)
 
+        random_index = random.sample(range(0, video.size()[0]), 2)
         save_CAM(
-            config, model.video_cnn, video, label, fold, config.train.experiment, i
+            config, model.video_cnn, video, label, fold, config.train.experiment, i, random_index
         )
 
         for i in preds_softmax.tolist():

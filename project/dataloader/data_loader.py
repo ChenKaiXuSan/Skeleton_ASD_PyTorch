@@ -330,7 +330,8 @@ class WalkDataModule(LightningDataModule):
         else:
             val_data_loader = DataLoader(
                 self.val_gait_dataset,
-                batch_size=self._gait_cycle_batch_size,
+                # batch_size=self._gait_cycle_batch_size,
+                batch_size=16,
                 num_workers=self._NUM_WORKERS,
                 pin_memory=True,
                 shuffle=True,
@@ -360,7 +361,8 @@ class WalkDataModule(LightningDataModule):
         else:
             val_data_loader = DataLoader(
                 self.val_gait_dataset,
-                batch_size=self._gait_cycle_batch_size,
+                # batch_size=self._gait_cycle_batch_size,
+                batch_size = 16,
                 num_workers=self._NUM_WORKERS,
                 pin_memory=True,
                 shuffle=True,
