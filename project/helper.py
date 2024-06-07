@@ -68,13 +68,91 @@ def save_helper(config, model, dataloader, fold):
         total_pred, total_label = save_inference_late_fusion(
             config, model, dataloader, fold
         )
-
+    elif config.train.experiment == "two_stream":
+        total_pred, total_label = save_inference_two_stream(
+            config, model, dataloader, fold
+        )
     else:
         total_pred, total_label = save_inference(config, model, dataloader, fold)
 
     save_metrics(total_pred, total_label, fold, config)
     save_CM(total_pred, total_label, fold, config)
 
+def save_inference_two_stream(config, model, dataloader, fold):
+    
+        total_pred_list = []
+        total_label_list = []
+    
+        test_dataloader = dataloader.test_dataloader()
+        optical_flow_model = model.optical_flow_model
+        model_rgb = model.model_rgb
+        model_flow = model.model_flow
+    
+        for i, batch in enumerate(test_dataloader):
+    
+            # input and label
+            video = (
+                batch["video"].detach().to(f"cuda:{config.train.gpu_num}")
+            )  # b, c, t, h, w
+            label = (
+                batch["label"].detach().to(f"cuda:{config.train.gpu_num}")
+            )  # b, class_num
+    
+            model.eval().to(f"cuda:{config.train.gpu_num}")
+
+            video_flow = optical_flow_model.process_batch(video)  # b, c, t, h, w
+
+            b, c, t, h, w = video.shape
+
+            single_img = video[:, :, :-1, :].reshape(-1, 3, h, w)
+            single_flow = video_flow.contiguous().view(-1, 2, h, w)
+
+            # pred the video frames
+            with torch.no_grad():
+                pred_video_rgb = model_rgb(single_img)
+                pred_video_flow = model_flow(single_flow)
+
+            pred_video_rgb_softmax = torch.softmax(pred_video_rgb, dim=1)
+            pred_video_flow_softmax = torch.softmax(pred_video_flow, dim=1)
+
+            pred_video_softmax = (pred_video_rgb_softmax + pred_video_flow_softmax) / 2
+
+            random_index = random.sample(range(0, video.size()[0]), 2)
+            save_CAM(
+                config, model.model_rgb, video[...,0], label, fold, "rgb", i, random_index
+            )
+            save_CAM(
+                config, model.model_flow, video[...,1], label, fold, "flow", i, random_index
+            )
+    
+            for i in pred_video_softmax.tolist():
+                total_pred_list.append(i)
+            for i in label.tolist():
+                total_label_list.append(i)
+    
+        pred = torch.tensor(total_pred_list)
+        label = torch.tensor(total_label_list)
+    
+        # save the results
+        save_path = Path(config.train.log_path) / "best_preds"
+    
+        if save_path.exists() is False:
+            save_path.mkdir(parents=True)
+    
+        torch.save(
+            pred,
+            save_path / f"{config.model.model}_{config.data.sampling}_{fold}_pred.pt",
+        )
+        torch.save(
+            label,
+            save_path / f"{config.model.model}_{config.data.sampling}_{fold}_label.pt",
+        )
+    
+        logging.info(
+            f"save the pred and label into {save_path} / {config.model.model}_{config.data.sampling}_{fold}"
+        )
+    
+        return pred, label
 
 def save_inference_late_fusion(config, model, dataloader, fold):
 
