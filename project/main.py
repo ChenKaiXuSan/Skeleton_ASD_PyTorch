@@ -131,7 +131,6 @@ def train(hparams, dataset_idx, fold):
     trainer.test(
         classification_module,
         data_module,
-        # ) 
         ckpt_path="best",
     )
 

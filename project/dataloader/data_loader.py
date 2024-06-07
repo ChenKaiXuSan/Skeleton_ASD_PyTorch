@@ -235,6 +235,30 @@ class WalkDataModule(LightningDataModule):
                 transform=self.mapping_transform,
             )
 
+        elif self._experiment == "two_stream" or self._experiment == "cnn_lstm":
+            # * Here we use 1s30 frames to get a static image
+            
+            # train dataset
+            self.train_gait_dataset = labeled_video_dataset(
+                data_path=self._dataset_idx[2],
+                clip_sampler=make_clip_sampler("uniform", 1),
+                transform=self.train_video_transform,
+            )
+
+            # val dataset
+            self.val_gait_dataset = labeled_video_dataset(
+                data_path=self._dataset_idx[3],
+                clip_sampler=make_clip_sampler("uniform", 1),
+                transform=self.val_video_transform,
+            )
+
+            # test dataset
+            self.test_gait_dataset = labeled_video_dataset(
+                data_path=self._dataset_idx[3],
+                clip_sampler=make_clip_sampler("uniform", 1),
+                transform=self.val_video_transform,
+            )
+
         else:
             raise ValueError("experiment keyword not support")
 
