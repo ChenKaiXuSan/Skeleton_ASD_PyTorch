@@ -10,7 +10,7 @@ Comment:
 
 Have a good code time :)
 -----
-Last Modified: Thursday October 19th 2023 2:33:46 am
+Last Modified: Saturday April 6th 2024 8:08:31 am
 Modified By: the developer formerly known as Kaixu Chen at <chenkaixusan@gmail.com>
 -----
 Copyright (c) 2023 The University of Tsukuba
@@ -119,7 +119,45 @@ class MakeImageModule(nn.Module):
 
         self.model_name = hparams.model.model
         self.model_class_num = hparams.model.model_class_num
-        self.transfor_learning = hparams.train.transfer_learning
+        self.transfer_learning = hparams.train.transfer_learning
 
     def make_resnet(self, input_channel:int = 3) -> nn.Module:
-        ...
+        if self.transfer_learning:
+            model = torch.hub.load('pytorch/vision:v0.10.0', 'resnet50', pretrained=True)
+            model.conv1 = nn.Conv2d(input_channel, 64, kernel_size=7, stride=2, padding=3, bias=False)
+            model.fc = nn.Linear(2048, self.model_class_num)
+
+    def __call__(self, *args: Any, **kwds: Any) -> Any:
+
+        if self.model_name == "resnet":
+            return self.make_resnet()
+        else:
+            raise KeyError(f"the model name {self.model_name} is not in the model zoo")
+
+class MakeOriginalTwoStream(nn.Module):
+    '''
+    from torchvision make resnet 50 network.
+    input is single figure.
+    '''
+
+    def __init__(self, hparams) -> None:
+
+        super().__init__()
+
+        self.model_class_num = hparams.model_class_num
+        self.transfor_learning = hparams.transfor_learning
+
+    def make_resnet(self, input_channel:int = 3):
+
+        model = torch.hub.load('pytorch/vision:v0.10.0', 'resnet50', pretrained=True)
+
+        # from pytorchvision, use resnet 50.
+        # weights = ResNet50_Weights.DEFAULT
+        # model = resnet50(weights=weights)
+
+        # for the folw model and rgb model 
+        model.conv1 = nn.Conv2d(input_channel, 64, kernel_size=7, stride=2, padding=3, bias=False)
+        # change the output 400 to model class num
+        model.fc = nn.Linear(2048, self.model_class_num)
+
+        return model

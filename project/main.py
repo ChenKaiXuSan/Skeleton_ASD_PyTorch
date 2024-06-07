@@ -15,6 +15,8 @@ HISTORY:
 Date 	By 	Comments
 ------------------------------------------------
 
+07-06-2024	Kaixu Chen	add two stream compare experiment.
+
 14-05-2024	Kaixu Chen	1. move the train process inside the new folder "trainer" and select based on "experiment" keyword.
                         2. add the save helper to save the inference results. deplucate the save_inference code in the main.py.
 04-04-2024	Kaixu Chen	add save inference method. now it can save the pred/label to the disk, for the further analysis.
@@ -37,9 +39,11 @@ from pytorch_lightning.callbacks import (
 )
 
 from dataloader.data_loader import WalkDataModule
+
 from trainer.train_single import SingleModule
 from trainer.train_late_fusion import LateFusionModule
 from trainer.train_temporal_mix import TemporalMixModule
+from trainer.train_two_stream import TwoStreamModule
 
 import hydra
 
@@ -67,6 +71,8 @@ def train(hparams, dataset_idx, fold):
         classification_module = SingleModule(hparams)
     elif hparams.train.experiment == "temporal_mix":
         classification_module = TemporalMixModule(hparams)
+    elif hparams.train.experiment == "two_stream":
+        classification_module = TwoStreamModule(hparams)
     else:
         raise ValueError("the experiment is not supported.")
 
