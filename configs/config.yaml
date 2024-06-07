@@ -1,12 +1,7 @@
 # hydra config
 hydra:
   run:
-    dir: /workspace/skeleton/logs/${model.model}/${now:%Y-%m-%d}/${model.model_class_num}/${now:%H-%M-%S}
-
-# group by defaults
-# defaults:
-#   - optimizer: adam
-#   - data: gait_seg
+    dir: /workspace/skeleton/logs/${train.experiment}/${model.model}/${now:%Y-%m-%d}/${model.model_class_num}/${now:%H-%M-%S}
 
 optimizer:
   lr: 0.0001
@@ -26,7 +21,7 @@ data:
   default_batch_size: 32  # this used for default method, without gait cycle defined method.
 
 model:
-  model: "resnet"
+  model: "resnet"   
   model_class_num: 3 # the class num of model. 2 > [ASD, non_ASD]. 3 > [ASD, DHS, LCS_HipOA]. 4 > [ASD, DHS, LCS_HipOA, normal]
   model_depth: 50 # choices=[50, 101, 152], help='the depth of used model'
 
@@ -46,14 +41,14 @@ train:
   clip_duration: 0.5 # clip duration for the video
   uniform_temporal_subsample_num: 8 # num frame from the clip duration, f or define one gait cycle, we need use whole frames.
 
-  temporal_mix: False
+  experiment: temporal_mix # temporal_mix, late_fusion, single_stance, single_swing, single_random
 
   gpu_num: 0 # choices=[0, 1], help='the gpu number whicht to train'
 
   # Transfor_learning
   transfor_learning: True # if use the transformer learning
 
-  log_path: /workspace/skeleton/logs/${model.model}/${now:%Y-%m-%d}/${model.model_class_num}/${now:%H-%M-%S}
+  log_path: /workspace/skeleton/logs/${train.experiment}/${model.model}/${now:%Y-%m-%d}/${model.model_class_num}/${now:%H-%M-%S}
 
   fast_dev_run: False # if use the fast_dev_run
   fold: 3 # the fold number of the cross validation

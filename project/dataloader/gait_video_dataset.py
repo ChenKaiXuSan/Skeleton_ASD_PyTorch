@@ -49,17 +49,14 @@ def split_gait_cycle(video_tensor: torch.Tensor, gait_cycle_index: list, gait_cy
             use_idx.append(gait_cycle_index[i])
 
     elif gait_cycle == 1:
-        # if len(gait_cycle_index) == 2:
-        #     ans_list.append(video_tensor[gait_cycle_index[0]:gait_cycle_index[1], ...])
-        #     use_idx.append(gait_cycle_index[0])
-        #     print('the gait cycle index is less than 2, so use first gait cycle')
-
+    
         # FIXME: maybe here do not -1 for upper limit.
         for i in range(1, len(gait_cycle_index)-1, 2):
             ans_list.append(video_tensor[gait_cycle_index[i]:gait_cycle_index[i+1], ...])
             use_idx.append(gait_cycle_index[i])
 
-    logging.info(f"used split gait cycle index: {use_idx}")
+    print(f"used split gait cycle index: {use_idx}")
+    
     return ans_list, use_idx # needed gait cycle video tensor
 
 class TemporalMix(object):
@@ -183,20 +180,34 @@ class TemporalMix(object):
 class LabeledGaitVideoDataset(torch.utils.data.Dataset):
     def __init__(
         self,
-        gait_cycle: int,
+        experiment: str,
         labeled_video_paths: list[Tuple[str, Optional[dict]]],
         transform: Optional[Callable[[dict], Any]] = None,
-        temporal_mix: bool = False,
     ) -> None:
         super().__init__()
 
         self._transform = transform
         self._labeled_videos = labeled_video_paths
-        self._gait_cycle = gait_cycle
-        if temporal_mix:
+        self._experiment = experiment
+
+        if experiment == "temporal_mix":
             self._temporal_mix = TemporalMix()
         else:
             self._temporal_mix = False
+
+    def move_transform(self, vframes: list[torch.Tensor]) -> None:
+
+        if self._transform is not None:
+            video_t_list = []
+            for video_t in vframes:
+                transformed_img = self._transform(video_t.permute(1, 0, 2, 3))
+                video_t_list.append(transformed_img)
+
+            return torch.stack(video_t_list, dim=0) # c, t, h, w
+        else:
+            print("no transform")
+            return torch.stack(vframes, dim=0)
+
 
     def __len__(self):
         return len(self._labeled_videos)
@@ -217,14 +228,40 @@ class LabeledGaitVideoDataset(torch.utils.data.Dataset):
         bbox_none_index = file_info_dict["none_index"]
         bbox = file_info_dict["bbox"]
 
-        logging.info(f"video name: {video_name}, gait cycle index: {gait_cycle_index}")
+        print(f"video name: {video_name}, gait cycle index: {gait_cycle_index}")
 
-        if self._temporal_mix:
+        if self._experiment == "temporal_mix":
             # should return the new frame, named temporal mix.
             defined_vframes = self._temporal_mix(vframes, gait_cycle_index, bbox)
+            defined_vframes = self.move_transform(defined_vframes)
+
+        elif self._experiment == "late_fusion":
+
+            stance_vframes, used_gait_idx = split_gait_cycle(vframes, gait_cycle_index, 0)
+            swing_vframes, used_gait_idx = split_gait_cycle(vframes, gait_cycle_index, 1)
+
+            # * keep shape 
+            if len(stance_vframes) > len(swing_vframes):
+                stance_vframes = stance_vframes[:len(swing_vframes)]
+            elif len(stance_vframes) < len(swing_vframes):
+                swing_vframes = swing_vframes[:len(stance_vframes)]
+
+            trans_stance_vframes = self.move_transform(stance_vframes)
+            trans_swing_vframes = self.move_transform(swing_vframes)
+
+            # * 将不同的phase组合成一个batch返回
+            defined_vframes = torch.stack([trans_stance_vframes, trans_swing_vframes], dim=-1)
+
+        elif "single" in self._experiment:
+            if self._experiment == "single_stance":
+                defined_vframes, used_gait_idx = split_gait_cycle(vframes, gait_cycle_index, 0)
+            elif self._experiment == "single_swing":
+                defined_vframes, used_gait_idx = split_gait_cycle(vframes, gait_cycle_index, 1)
+            
+            defined_vframes = self.move_transform(defined_vframes)
+                
         else:
-            # split gait by gait cycle index, first phase or second phase
-            defined_vframes, used_gait_idx = split_gait_cycle(vframes, gait_cycle_index, self._gait_cycle)
+            raise ValueError("experiment name is not correct")
 
         sample_info_dict = {
             "video": defined_vframes,
@@ -236,32 +273,21 @@ class LabeledGaitVideoDataset(torch.utils.data.Dataset):
             "bbox_none_index": bbox_none_index,
         }
         
-        # move to functional
-        if self._transform is not None:
-            video_t_list = []
-            for video_t in defined_vframes:
-                transformed_img = self._transform(video_t.permute(1, 0, 2, 3))
-                video_t_list.append(transformed_img)
-
-
-            sample_info_dict["video"] = torch.stack(video_t_list, dim=0) # c, t, h, w
-        else:
-            print("no transform")
-
+        
         return sample_info_dict
 
 def labeled_gait_video_dataset(
-    gait_cycle: int,
+    experiment: str,
     transform: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None,
     dataset_idx: Dict = None,
-    temporal_mix: bool = False,
 ) -> LabeledGaitVideoDataset:
+    # TODO: 这里应该把late fusion的dataloader的方式改一下，因为目前模型并不能收敛。就很奇怪
+    # TODO: 虽然不是很想改，但是做了很多次试验，late fusion的结果都非常的奇怪。唯一能想到的问题也就是这里的dataloader的问题。stance/swing的周期图像没有匹配上，所以造成这样的结果。
 
     dataset = LabeledGaitVideoDataset(
-        gait_cycle,
-        dataset_idx,
-        transform,
-        temporal_mix,
+        experiment=experiment,
+        labeled_video_paths=dataset_idx,
+        transform=transform,
     )
 
     return dataset

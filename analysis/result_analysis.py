@@ -46,7 +46,7 @@ from torchmetrics.classification import (
 )
 
 from project.dataloader.data_loader import WalkDataModule
-from project.train import GaitCycleLightningModule
+from project.train_single import GaitCycleLightningModule
 
 from pytorch_lightning import seed_everything
 
