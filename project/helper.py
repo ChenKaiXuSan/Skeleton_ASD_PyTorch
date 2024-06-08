@@ -98,6 +98,7 @@ def save_inference_two_stream(config, model, dataloader, fold):
         label = (
             batch["label"].detach().to(f"cuda:{config.train.gpu_num}")
         )  # b, class_num
+        label = label.repeat_interleave(video.size()[2]-1)
 
         model.eval().to(f"cuda:{config.train.gpu_num}")
 
@@ -113,10 +114,8 @@ def save_inference_two_stream(config, model, dataloader, fold):
             pred_video_rgb = model_rgb(single_img)
             pred_video_flow = model_flow(single_flow)
 
-        pred_video_rgb_softmax = torch.softmax(pred_video_rgb, dim=1)
-        pred_video_flow_softmax = torch.softmax(pred_video_flow, dim=1)
-
-        pred_video_softmax = (pred_video_rgb_softmax + pred_video_flow_softmax) / 2
+        pred_total = (pred_video_rgb + pred_video_flow) / 2
+        pred_video_softmax = torch.softmax(pred_total, dim=1)
 
         random_index = random.sample(range(0, video.size()[0]), 2)
         save_CAM(

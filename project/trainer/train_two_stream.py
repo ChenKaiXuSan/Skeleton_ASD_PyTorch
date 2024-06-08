@@ -7,6 +7,9 @@ Created Date: Friday June 7th 2024
 Author: Kaixu Chen
 -----
 Comment:
+This file implements the training process for two stream method.
+In this two streams are trained separately and then the results of two streams are fused to get the final result.
+Here, saving the results and calculating the metrics are done in separate functions.
 
 Have a good code time :)
 -----
@@ -141,7 +144,7 @@ class TwoStreamModule(LightningModule):
             "optimizer": optimzier,
             "lr_scheduler": {
                 "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(optimzier),
-                "monitor": "val_loss",
+                "monitor": "val/loss",
             },
         }
         # return torch.optim.SGD(self.parameters(), lr=self.lr)
@@ -212,10 +215,10 @@ class TwoStreamModule(LightningModule):
             self.log_dict(
                 {
                     "train/loss": loss,
-                    "train/acc": accuracy,
-                    "train/precision": precision,
-                    "train/recall": recall,
-                    "train/f1_score": f1_score,
+                    "train/video_acc": accuracy,
+                    "train/video_precision": precision,
+                    "train/video_recall": recall,
+                    "train/video_f1_score": f1_score,
                 },
                 on_epoch=True,
                 on_step=True,
@@ -244,10 +247,10 @@ class TwoStreamModule(LightningModule):
             self.log_dict(
                 {
                     "val/loss": loss,
-                    "val/acc": accuracy,
-                    "val/precision": precision,
-                    "val/recall": recall,
-                    "val/f1_score": f1_score,
+                    "val/video_acc": accuracy,
+                    "val/video_precision": precision,
+                    "val/video_recall": recall,
+                    "val/video_f1_score": f1_score,
                 },
                 on_epoch=True,
                 on_step=True,
