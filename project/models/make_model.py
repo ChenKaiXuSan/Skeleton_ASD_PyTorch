@@ -144,8 +144,8 @@ class MakeOriginalTwoStream(nn.Module):
 
         super().__init__()
 
-        self.model_class_num = hparams.model_class_num
-        self.transfor_learning = hparams.transfor_learning
+        self.model_class_num = hparams.model.model_class_num
+        self.transfor_learning = hparams.train.transfor_learning
 
     def make_resnet(self, input_channel:int = 3):
 

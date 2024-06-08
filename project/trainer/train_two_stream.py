@@ -46,11 +46,9 @@ class TwoStreamModule(LightningModule):
         super().__init__()
 
         # return model type name
-        self.model_type = hparams.model
-        # self.fusion = hparams.fusion
-        self.img_size = hparams.img_size
-        self.lr = hparams.lr
-        self.num_classes = hparams.model.num_classes
+        self.model_type = hparams.model.model
+        self.lr = hparams.optimizer.lr
+        self.num_classes = hparams.model.model_class_num
 
         # model define
         self.optical_flow_model = Optical_flow()
@@ -83,10 +81,10 @@ class TwoStreamModule(LightningModule):
             loss: the calc loss
         """
 
+        video = batch["video"].detach() # b, c, t, h, w
         label = batch["label"].detach()  # b, c, t, h, w
-        video = batch["video"].detach().float().squeeze()  # b, c, t, h, w
-
         label = label.repeat_interleave(video.size()[2] - 1)
+
         loss = self.single_logic(label, video)
 
         return loss
@@ -176,30 +174,30 @@ class TwoStreamModule(LightningModule):
                 pred_video_rgb = self.model_rgb(single_img)
                 pred_video_flow = self.model_flow(single_flow)
 
-            # squeeze(dim=-1) to keep the torch.Size([1]), not null.
-            loss_rgb = F.cross_entropy(
-                pred_video_rgb.squeeze(dim=-1), label.float()
-            )
-            loss_flow = F.cross_entropy(
-                pred_video_flow.squeeze(dim=-1), label.float()
-            )
+        # squeeze(dim=-1) to keep the torch.Size([1]), not null.
+        loss_rgb = F.cross_entropy(
+            pred_video_rgb.squeeze(dim=-1), label.long()
+        )
+        loss_flow = F.cross_entropy(
+            pred_video_flow.squeeze(dim=-1), label.long()
+        )
 
-            loss = loss_rgb + loss_flow
-
-            self.save_log([pred_video_rgb, pred_video_flow], label, loss)
+        loss = loss_rgb + loss_flow
+        pred_total = (pred_video_rgb + pred_video_flow) / 2
+        self.save_log(pred_total, label, loss)
 
         return loss
 
-    def save_log(self, pred_list: list, label: torch.Tensor, loss):
+    def save_log(self, pred: torch.Tensor, label: torch.Tensor, loss):
 
         if self.training:
 
-            preds = pred_list[0]
+            preds = pred
 
             # when torch.size([1]), not squeeze.
             if preds.size()[0] != 1 or len(preds.size()) != 1:
                 preds = preds.squeeze(dim=-1)
-                pred_softmax = torch.softmax(preds)
+                pred_softmax = torch.softmax(preds, dim=-1)
             else:
                 pred_softmax = torch.softmax(preds)
 
@@ -226,7 +224,7 @@ class TwoStreamModule(LightningModule):
 
         else:
 
-            preds = pred_list[0]
+            preds = pred
 
             # when torch.size([1]), not squeeze.
             if preds.size()[0] != 1 or len(preds.size()) != 1:

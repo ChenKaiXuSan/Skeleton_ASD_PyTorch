@@ -65,6 +65,7 @@ def train(hparams, dataset_idx, fold):
 
     seed_everything(42, workers=True)
 
+    # * Select the type of experiment here
     if hparams.train.experiment == "late_fusion":
         classification_module = LateFusionModule(hparams)
     elif "single" in hparams.train.experiment:
