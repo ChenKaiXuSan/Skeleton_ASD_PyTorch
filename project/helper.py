@@ -118,19 +118,19 @@ def save_inference_two_stream(config, model, dataloader, fold):
         pred_video_softmax = torch.softmax(pred_total, dim=1)
 
         random_index = random.sample(range(0, video.size()[0]), 2)
-        save_CAM(
-            config, model.model_rgb, video[..., 0], label, fold, "rgb", i, random_index
-        )
-        save_CAM(
-            config,
-            model.model_flow,
-            video[..., 1],
-            label,
-            fold,
-            "flow",
-            i,
-            random_index,
-        )
+        # save_CAM(
+        #     config, model.model_rgb, video[..., 0], label, fold, "rgb", i, random_index
+        # )
+        # save_CAM(
+        #     config,
+        #     model.model_flow,
+        #     video[..., 1],
+        #     label,
+        #     fold,
+        #     "flow",
+        #     i,
+        #     random_index,
+        # )
 
         for i in pred_video_softmax.tolist():
             total_pred_list.append(i)
@@ -423,7 +423,7 @@ def save_CAM(
     i,
     random_index,
 ):
-
+    # FIXME: 由于backbone的不同，需要修改target_layer的位置。
     # guided grad cam method
     target_layer = [model.blocks[-2].res_blocks[-1]]
     # target_layer = [model.model.blocks[-2]]
