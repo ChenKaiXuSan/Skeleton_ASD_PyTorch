@@ -197,14 +197,18 @@ class CNNLSTM(nn.Module):
     
     def forward(self, x):
 
-        hidden = None
-        for i in range(x.size(1)):
-            out = self.cnn(x[:, i, :, :, :])
-            out = out.view(out.size(0), -1)
-            out = out.unsqueeze(1)
-            out, hidden = self.lstm(out, hidden)
-        
-        x = F.relu(x)
-        x = self.fc(out[:, -1, :])
+        b, c, t, h, w = x.size()
 
-        return x
+        res = []
+
+        for i in range(b):
+            hidden = None
+            out = self.cnn(x[i].permute(1, 0, 2, 3))
+            out, hidden = self.lstm(out, hidden)
+    
+            out = F.relu(out)
+            out = self.fc(out)
+        
+            res.append(out)
+
+        return torch.cat(res, dim=0)

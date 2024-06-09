@@ -277,16 +277,16 @@ def save_inference(config, model, dataloader, fold):
             preds_softmax = torch.softmax(preds, dim=1)
 
         random_index = random.sample(range(0, video.size()[0]), 2)
-        save_CAM(
-            config,
-            model.video_cnn,
-            video,
-            label,
-            fold,
-            config.train.experiment,
-            i,
-            random_index,
-        )
+        # save_CAM(
+        #     config,
+        #     model.video_cnn,
+        #     video,
+        #     label,
+        #     fold,
+        #     config.train.experiment,
+        #     i,
+        #     random_index,
+        # )
 
         for i in preds_softmax.tolist():
             total_pred_list.append(i)

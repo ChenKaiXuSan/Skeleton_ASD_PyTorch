@@ -103,7 +103,7 @@ class CNNLstmModule(LightningModule):
 
         video = batch["video"].detach() # b, c, t, h, w
         label = batch["label"].detach()  # b, c, t, h, w
-        label = label.repeat_interleave(video.size()[2] - 1)
+        label = label.repeat_interleave(video.size()[2])
 
         loss = self.single_logic(label, video)
 
@@ -126,8 +126,7 @@ class CNNLstmModule(LightningModule):
         video = batch["video"].detach()  # b, c, t, h, w
         label = batch["label"].detach()  # b
 
-        # not use the last frame
-        label = label.repeat_interleave(video.size()[2] - 1)
+        label = label.repeat_interleave(video.size()[2])
         loss = self.single_logic(label, video)
 
     def test_step(self, batch, batch_idx):
@@ -143,7 +142,7 @@ class CNNLstmModule(LightningModule):
         label = batch["label"].detach()  # b
 
         # not use the last frame
-        label = label.repeat_interleave(video.size()[2] - 1)
+        label = label.repeat_interleave(video.size()[2])
         loss = self.single_logic(label, video)
 
     def configure_optimizers(self):
@@ -171,9 +170,6 @@ class CNNLstmModule(LightningModule):
 
     def single_logic(self, label: torch.Tensor, video: torch.Tensor):
 
-        # pred the optical flow base RAFT
-        # last_frame = video[:, :, -1, :].unsqueeze(dim=2) # b, c, 1, h, w
-        # OF_video = torch.cat([video, last_frame], dim=2)
         b, c, t, h, w = video.shape
 
         # eval model, feed data here

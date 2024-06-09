@@ -199,7 +199,7 @@ class WalkDataModule(LightningDataModule):
                 clip_sampler=make_clip_sampler("uniform", self._CLIP_DURATION),
                 transform=self.val_video_transform,
             )
-
+            
             # test dataset
             self.test_gait_dataset = labeled_video_dataset(
                 data_path=self._dataset_idx[3],
