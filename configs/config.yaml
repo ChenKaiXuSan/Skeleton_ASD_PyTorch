@@ -21,7 +21,7 @@ data:
   default_batch_size: 32  # this used for default method, without gait cycle defined method.
 
 model:
-  model: "resnet"   
+  model: "resnet" 
   model_class_num: 3 # the class num of model. 2 > [ASD, non_ASD]. 3 > [ASD, DHS, LCS_HipOA]. 4 > [ASD, DHS, LCS_HipOA, normal]
   model_depth: 50 # choices=[50, 101, 152], help='the depth of used model'
 
@@ -41,7 +41,7 @@ train:
   clip_duration: 0.5 # clip duration for the video
   uniform_temporal_subsample_num: 8 # num frame from the clip duration, f or define one gait cycle, we need use whole frames.
 
-  experiment: temporal_mix # temporal_mix, late_fusion, single_stance, single_swing, single_random
+  experiment: temporal_mix # temporal_mix, late_fusion, single_stance, single_swing, single_random, two_stream, cnn_lstm, single_cnn
 
   gpu_num: 0 # choices=[0, 1], help='the gpu number whicht to train'
 
