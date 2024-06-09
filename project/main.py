@@ -44,6 +44,7 @@ from trainer.train_single import SingleModule
 from trainer.train_late_fusion import LateFusionModule
 from trainer.train_temporal_mix import TemporalMixModule
 from trainer.train_two_stream import TwoStreamModule
+from trainer.train_cnn_lstm import CNNLstmModule
 
 import hydra
 
@@ -74,6 +75,8 @@ def train(hparams, dataset_idx, fold):
         classification_module = TemporalMixModule(hparams)
     elif hparams.train.experiment == "two_stream":
         classification_module = TwoStreamModule(hparams)
+    elif hparams.train.experiment == "cnn_lstm":
+        classification_module = CNNLstmModule(hparams)
     else:
         raise ValueError("the experiment is not supported.")
 

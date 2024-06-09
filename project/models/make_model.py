@@ -10,7 +10,7 @@ Comment:
 
 Have a good code time :)
 -----
-Last Modified: Saturday April 6th 2024 8:08:31 am
+Last Modified: Sunday June 9th 2024 6:04:51 am
 Modified By: the developer formerly known as Kaixu Chen at <chenkaixusan@gmail.com>
 -----
 Copyright (c) 2023 The University of Tsukuba
@@ -25,6 +25,7 @@ from typing import Any, List
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from pytorchvideo.models import x3d, resnet, slowfast
 from torchvision.models import resnet50, mobilenet_v3_large, efficientnet_v2_l, alexnet
@@ -161,3 +162,49 @@ class MakeOriginalTwoStream(nn.Module):
         model.fc = nn.Linear(2048, self.model_class_num)
 
         return model
+    
+class CNNLSTM(nn.Module):
+    '''
+    the cnn lstm network, use the resnet 50 as the cnn part.
+    '''
+
+    def __init__(self, hparams) -> None:
+
+        super().__init__()
+
+        self.model_class_num = hparams.model.model_class_num
+        self.transfor_learning = hparams.train.transfor_learning
+
+        self.cnn = self.make_cnn()
+        # LSTM 
+        self.lstm = nn.LSTM(input_size=300, hidden_size=512, num_layers=2, batch_first=True)
+        self.fc = nn.Linear(512, self.model_class_num)
+
+    def make_cnn(self, input_channel:int = 3):
+
+        model = torch.hub.load('pytorch/vision:v0.10.0', 'resnet50', pretrained=True)
+
+        # from pytorchvision, use resnet 50.
+        # weights = ResNet50_Weights.DEFAULT
+        # model = resnet50(weights=weights)
+
+        # for the folw model and rgb model 
+        model.conv1 = nn.Conv2d(input_channel, 64, kernel_size=7, stride=2, padding=3, bias=False)
+        # change the output 400 to model class num
+        model.fc = nn.Linear(2048, 300)
+
+        return model    
+    
+    def forward(self, x):
+
+        hidden = None
+        for i in range(x.size(1)):
+            out = self.cnn(x[:, i, :, :, :])
+            out = out.view(out.size(0), -1)
+            out = out.unsqueeze(1)
+            out, hidden = self.lstm(out, hidden)
+        
+        x = F.relu(x)
+        x = self.fc(out[:, -1, :])
+
+        return x
