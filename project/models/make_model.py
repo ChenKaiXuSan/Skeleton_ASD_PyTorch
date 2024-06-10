@@ -10,7 +10,7 @@ Comment:
 
 Have a good code time :)
 -----
-Last Modified: Monday June 10th 2024 6:42:04 am
+Last Modified: Monday June 10th 2024 12:42:58 pm
 Modified By: the developer formerly known as Kaixu Chen at <chenkaixusan@gmail.com>
 -----
 Copyright (c) 2023 The University of Tsukuba
@@ -44,11 +44,11 @@ class MakeVideoModule(nn.Module):
         self.model_name = hparams.model.model
         self.model_class_num = hparams.model.model_class_num
         self.model_depth = hparams.model.model_depth
-        self.transfor_learning = hparams.train.transfor_learning
+        self.transfer_learning = hparams.train.transfer_learning
 
     def make_walk_resnet(self, input_channel:int = 3) -> nn.Module:
 
-        if self.transfor_learning:
+        if self.transfer_learning:
             slow = torch.hub.load('facebookresearch/pytorchvideo', 'slow_r50', pretrained=True)
             
             # for the folw model and rgb model 
@@ -69,7 +69,7 @@ class MakeVideoModule(nn.Module):
 
     def make_walk_x3d(self, input_channel:int = 3) -> nn.Module:
 
-        if self.transfor_learning:
+        if self.transfer_learning:
             # x3d l model, param 6.15 with 16 frames. more smaller maybe more faster.
             # top1 acc is 77.44
             model = torch.hub.load("facebookresearch/pytorchvideo:main", model='x3d_m', pretrained=True)
@@ -148,7 +148,7 @@ class MakeOriginalTwoStream(nn.Module):
         super().__init__()
 
         self.model_class_num = hparams.model.model_class_num
-        self.transfor_learning = hparams.train.transfor_learning
+        self.transfer_learning = hparams.train.transfer_learning
 
     def make_resnet(self, input_channel:int = 3):
 
@@ -175,7 +175,7 @@ class CNNLSTM(nn.Module):
         super().__init__()
 
         self.model_class_num = hparams.model.model_class_num
-        self.transfor_learning = hparams.train.transfor_learning
+        self.transfer_learning = hparams.train.transfer_learning
 
         self.cnn = self.make_cnn()
         # LSTM 
