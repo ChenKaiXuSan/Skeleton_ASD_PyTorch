@@ -262,7 +262,8 @@ def save_inference(config, model, dataloader, fold):
         label = (
             batch["label"].detach().to(f"cuda:{config.train.gpu_num}")
         )  # b, class_num
-
+        if config.train.experiment == "cnn_lstm":
+            label = label.repeat_interleave(video.size()[2])
         model.eval().to(f"cuda:{config.train.gpu_num}")
 
         # pred the video frames
@@ -277,16 +278,16 @@ def save_inference(config, model, dataloader, fold):
             preds_softmax = torch.softmax(preds, dim=1)
 
         random_index = random.sample(range(0, video.size()[0]), 2)
-        save_CAM(
-            config,
-            model.video_cnn,
-            video,
-            label,
-            fold,
-            config.train.experiment,
-            i,
-            random_index,
-        )
+        # save_CAM(
+        #     config,
+        #     model.video_cnn,
+        #     video,
+        #     label,
+        #     fold,
+        #     config.train.experiment,
+        #     i,
+        #     random_index,
+        # )
 
         for i in preds_softmax.tolist():
             total_pred_list.append(i)
@@ -331,7 +332,8 @@ def save_metrics(all_pred, all_label, fold, config):
     save_path = Path(config.train.log_path) / "metrics.txt"
 
     # define metrics
-    num_class = torch.unique(all_label).size(0)
+    # num_class = torch.unique(all_label).size(0)
+    num_class = config.model.model_class_num
     _accuracy = MulticlassAccuracy(num_class)
     _precision = MulticlassPrecision(num_class)
     _recall = MulticlassRecall(num_class)
@@ -376,7 +378,8 @@ def save_CM(all_pred, all_label, fold, config):
         save_path.mkdir(parents=True)
 
     # define metrics
-    num_class = torch.unique(all_label).size(0)
+    # num_class = torch.unique(all_label).size(0)
+    num_class = config.model.model_class_num
     _confusion_matrix = MulticlassConfusionMatrix(num_class, normalize="true")
 
     logging.info("_confusion_matrix: %s" % _confusion_matrix(all_pred, all_label))
