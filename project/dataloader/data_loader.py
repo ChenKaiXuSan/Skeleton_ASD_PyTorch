@@ -236,7 +236,7 @@ class WalkDataModule(LightningDataModule):
                 transform=self.mapping_transform,
             )
 
-        elif self._experiment == "two_stream" or self._experiment == "cnn_lstm":
+        elif self._experiment == "two_stream" or self._experiment == "cnn_lstm" or self._experiment == "cnn":
             # * Here we use 1s30 frames to get a static image
 
             # train dataset
@@ -323,7 +323,7 @@ class WalkDataModule(LightningDataModule):
                 shuffle=False,
                 drop_last=True,
             )
-        elif self._experiment == "two_stream" or self._experiment == "cnn_lstm":
+        elif self._experiment == "two_stream" or self._experiment == "cnn_lstm" or self._experiment == "cnn":
             train_data_loader = DataLoader(
                 self.train_gait_dataset,
                 batch_size=self._gait_cycle_batch_size,
@@ -361,7 +361,7 @@ class WalkDataModule(LightningDataModule):
                 shuffle=False,
                 drop_last=True,
             )
-        elif self._experiment == "two_stream" or self._experiment == "cnn_lstm":
+        elif self._experiment == "two_stream" or self._experiment == "cnn_lstm" or self._experiment == "cnn":
             val_data_loader = DataLoader(
                 self.val_gait_dataset,
                 batch_size=self._gait_cycle_batch_size,
@@ -400,7 +400,7 @@ class WalkDataModule(LightningDataModule):
                 shuffle=False,
                 drop_last=True,
             )
-        elif self._experiment == "two_stream" or self._experiment == "cnn_lstm":
+        elif self._experiment == "two_stream" or self._experiment == "cnn_lstm" or self._experiment == "cnn":
             val_data_loader = DataLoader(
                 self.val_gait_dataset,
                 batch_size=self._gait_cycle_batch_size,
