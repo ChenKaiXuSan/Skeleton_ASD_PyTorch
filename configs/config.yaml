@@ -38,15 +38,15 @@ train:
   max_epochs: 50 # numer of epochs of training
 
   # used for val 
-  clip_duration: 0.5 # clip duration for the video
+  clip_duration: 1 # clip duration for the video
   uniform_temporal_subsample_num: 8 # num frame from the clip duration, f or define one gait cycle, we need use whole frames.
 
-  experiment: temporal_mix # temporal_mix, late_fusion, single_stance, single_swing, single_random, two_stream, cnn_lstm, single_cnn
+  experiment: temporal_mix # temporal_mix, late_fusion, single_stance, single_swing, single_random, two_stream, cnn_lstm, cnn
 
   gpu_num: 0 # choices=[0, 1], help='the gpu number whicht to train'
 
-  # Transfor_learning
-  transfor_learning: True # if use the transformer learning
+  # Transfer_learning
+  transfer_learning: True # if use the transformer learning
 
   log_path: /workspace/skeleton/logs/${train.experiment}/${model.model}/${now:%Y-%m-%d}/${model.model_class_num}/${now:%H-%M-%S}
 

@@ -10,7 +10,7 @@ Comment:
 
 Have a good code time :)
 -----
-Last Modified: Sunday June 9th 2024 6:04:51 am
+Last Modified: Monday June 10th 2024 6:42:04 am
 Modified By: the developer formerly known as Kaixu Chen at <chenkaixusan@gmail.com>
 -----
 Copyright (c) 2023 The University of Tsukuba
@@ -127,6 +127,8 @@ class MakeImageModule(nn.Module):
             model = torch.hub.load('pytorch/vision:v0.10.0', 'resnet50', pretrained=True)
             model.conv1 = nn.Conv2d(input_channel, 64, kernel_size=7, stride=2, padding=3, bias=False)
             model.fc = nn.Linear(2048, self.model_class_num)
+    
+        return model
 
     def __call__(self, *args: Any, **kwds: Any) -> Any:
 

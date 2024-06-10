@@ -264,6 +264,12 @@ def save_inference(config, model, dataloader, fold):
         )  # b, class_num
         if config.train.experiment == "cnn_lstm":
             label = label.repeat_interleave(video.size()[2])
+        if config.train.experiment == "cnn":
+            b, c, t, h, w = video.size()
+            label = label.repeat_interleave(video.size()[2])
+            video = video.reshape(b*t, c, h, w)
+            
+
         model.eval().to(f"cuda:{config.train.gpu_num}")
 
         # pred the video frames

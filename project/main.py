@@ -40,11 +40,14 @@ from pytorch_lightning.callbacks import (
 
 from dataloader.data_loader import WalkDataModule
 
+# 3D CNN model
 from trainer.train_single import SingleModule
 from trainer.train_late_fusion import LateFusionModule
 from trainer.train_temporal_mix import TemporalMixModule
+# compare experiment
 from trainer.train_two_stream import TwoStreamModule
 from trainer.train_cnn_lstm import CNNLstmModule
+from trainer.train_cnn import CNNModule
 
 import hydra
 
@@ -77,6 +80,8 @@ def train(hparams, dataset_idx, fold):
         classification_module = TwoStreamModule(hparams)
     elif hparams.train.experiment == "cnn_lstm":
         classification_module = CNNLstmModule(hparams)
+    elif hparams.train.experiment == "cnn":
+        classification_module = CNNModule(hparams)
     else:
         raise ValueError("the experiment is not supported.")
 
