@@ -11,7 +11,7 @@ The main API from Ultralytics YOLOv8, and we rewrite the API for our project.
  
 Have a good code time!
 -----
-Last Modified: Sunday September 3rd 2023 1:44:23 pm
+Last Modified: Saturday April 6th 2024 8:08:31 am
 Modified By: the developer formerly known as Kaixu Chen at <chenkaixusan@gmail.com>
 -----
 HISTORY:
@@ -55,6 +55,7 @@ class MultiPreprocess(torch.nn.Module):
 
         one_batch_keypoint = {}
         none_index = []
+        one_batch_keypoint_score = []
 
         with torch.no_grad():
             for frame in range(t):
@@ -79,8 +80,9 @@ class MultiPreprocess(torch.nn.Module):
                         one_batch_keypoint[frame] = None
                     else:
                         one_batch_keypoint[frame] = r.keypoints.xyn  # 1, 17
+                        one_batch_keypoint_score.append(r.keypoints.conf)  # 1, 17
 
-        return one_batch_keypoint, none_index
+        return one_batch_keypoint, none_index, one_batch_keypoint_score
 
     def get_YOLO_mask_result(self, frame_batch: np.ndarray):
         """
@@ -242,6 +244,7 @@ class MultiPreprocess(torch.nn.Module):
         pred_mask_list = []
         pred_bbox_list = []
         pred_keypoint_list = []
+        pred_keypoint_score_list = []
         pred_none_index = []
 
         for batch_index in range(b):
@@ -270,7 +273,7 @@ class MultiPreprocess(torch.nn.Module):
             one_batch_mask, _ = self.process_none(batch, one_batch_mask_Dict, one_mask_none_index)
             
             # * process one batch keypoint
-            one_batch_keypoint_Dict, one_pose_none_index = self.get_YOLO_pose_result(
+            one_batch_keypoint_Dict, one_pose_none_index, one_pose_keypoint_score_list = self.get_YOLO_pose_result(
                 one_batch_numpy
             )
             one_batch_keypoint, _ = self.process_none(
@@ -280,6 +283,7 @@ class MultiPreprocess(torch.nn.Module):
             pred_bbox_list.append(torch.stack(one_batch_bbox, dim=0).squeeze())  # t, cxcywh
             pred_mask_list.append(torch.stack(one_batch_mask, dim=1))  # c, t, h, w
             pred_keypoint_list.append(torch.stack(one_batch_keypoint, dim=0).squeeze()) # t, keypoint, value
+            pred_keypoint_score_list.append(torch.cat(one_pose_keypoint_score_list, dim=0)) # t, keypoint, value
             pred_none_index.append(one_bbox_none_index)
 
         # return batch, label, bbox, mask, keypoint
@@ -290,6 +294,7 @@ class MultiPreprocess(torch.nn.Module):
             torch.stack(pred_bbox_list, dim=0), # b, t, h, w
             torch.stack(pred_mask_list, dim=0), # b, c, t, h, w
             torch.stack(pred_keypoint_list, dim=0), # b, t, keypoint, value
+            torch.stack(pred_keypoint_score_list, dim=0) # b, t, keypoint, value
         )
 
     def forward(self, batch, labels):
@@ -301,7 +306,8 @@ class MultiPreprocess(torch.nn.Module):
         # bbox, (b, t, 4) (cxcywh)
         # mask, (b, 1, t, h, w)
         # keypoint, (b, t, 17, 2)
-        video, bbox_none_index, labels, bbox, mask, keypoint = self.process_batch(batch, labels)
+        # keypoint score, (b, t, 17, 1)
+        video, bbox_none_index, labels, bbox, mask, keypoint, keypoint_score = self.process_batch(batch, labels)
 
         # shape check
         assert video.shape == batch.shape
@@ -309,5 +315,6 @@ class MultiPreprocess(torch.nn.Module):
         assert bbox.shape[0] == b and bbox.shape[1] == t
         assert mask.shape[2] == t and mask.shape[0] == b
         assert keypoint.shape[0] == b and keypoint.shape[1] == t
+        # assert keypoint_score.shape[0] == b and keypoint_score.shape[1] == t
 
-        return video, bbox_none_index, labels, bbox, mask, keypoint
+        return video, bbox_none_index, labels, bbox, mask, keypoint, keypoint_score

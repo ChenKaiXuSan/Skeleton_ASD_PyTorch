@@ -10,7 +10,7 @@ This is used for define the one gait cycle from video.
  
 Have a good code time!
 -----
-Last Modified: Sunday September 3rd 2023 1:44:00 pm
+Last Modified: Saturday April 6th 2024 8:08:31 am
 Modified By: the developer formerly known as Kaixu Chen at <chenkaixusan@gmail.com>
 -----
 HISTORY:
@@ -196,7 +196,7 @@ class Preprocess(nn.Module):
         b, c, t, h, w = batch.shape
 
         # process mask, pose
-        video, bbox_none_index, labels, bbox, mask, pose = self.yolo_model(batch, labels)
+        video, bbox_none_index, labels, bbox, mask, pose, pose_score = self.yolo_model(batch, labels)
 
         # FIXME: OF method have some problem, the reason do not know.
         # when not use OF, return None value.
@@ -208,4 +208,4 @@ class Preprocess(nn.Module):
         # shape check
         self.shape_check([video, labels, mask, bbox, pose, optical_flow])
         
-        return video, bbox_none_index, labels, optical_flow, bbox, mask, pose
+        return video, bbox_none_index, labels, optical_flow, bbox, mask, pose, pose_score
