@@ -69,6 +69,7 @@ class MultiPreprocess(torch.nn.Module):
                     vid_stride=True,
                     stream=False,
                     verbose=self.verbose,
+                    device=self.device,
                 )
 
 
@@ -111,6 +112,7 @@ class MultiPreprocess(torch.nn.Module):
                     vid_stride=True,
                     stream=False,
                     verbose=self.verbose,
+                    device=self.device,
                 )
 
 

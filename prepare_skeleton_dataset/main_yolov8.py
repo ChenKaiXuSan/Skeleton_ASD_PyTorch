@@ -320,6 +320,7 @@ def process(parames, fold: str, disease: list):
             res[info['flag']].append(anno)
             # break;
     mmengine.dump(res, str(SAVE_PATH) + f'/{"_".join(disease)}.pkl')
+    logging.info(f"Save the {fold} {disease} to {SAVE_PATH}")
     
 def merge_pkl(config):
     
@@ -373,8 +374,8 @@ def main(parames):
         thread = multiprocessing.Process(target=process, args=(parames, "fold0", d))
         threads.append(thread)
 
-    parames.YOLO.device = "cuda:1"    
-    threads.append(multiprocessing.Process(target=process, args=(parames, "fold1", ["DHS"])))
+    # parames.YOLO.device = "cuda:1"    
+    # threads.append(multiprocessing.Process(target=process, args=(parames, "fold1", ["DHS"])))
 
     for t in threads:
         t.start()
@@ -382,6 +383,9 @@ def main(parames):
     for t in threads:
         t.join()
 
+    # FIXME: 因为没办法再加载线程的时候更换GPU，所以只能分开处理
+    process(parames, "fold1", ["DHS"])
+    
     merge_pkl(parames)
 
 if __name__ == "__main__":
