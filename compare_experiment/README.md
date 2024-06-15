@@ -34,6 +34,8 @@ Two-stream是一种结合了光流信息和RGB信息的网络结构。
 对于RGB网络，我们使用了Resnet50作为backbone，进行特征提取。
 我们使用在ImageNet上预训练的模型来进行训练。
 
+我们训练100个epoch，没有使用early stopping。详细配置可以在`/compare_experiment/skeleton/stgcn/stgcn_joint-keypoint-2d.py`中查看。
+
 ## Skeleton-based Action Recognition
 
 Skeleton-based是一种基于骨架数据的动作识别方法。

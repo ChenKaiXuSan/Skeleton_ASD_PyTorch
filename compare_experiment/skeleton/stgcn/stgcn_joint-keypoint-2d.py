@@ -102,7 +102,7 @@ default_hooks = dict(checkpoint=dict(interval=1), logger=dict(interval=100))
 auto_scale_lr = dict(enable=False, base_batch_size=128)
 
 # ! write by mine 
-load_from = '/workspace/skeleton/compare_experiment/skeleton/stgcn/stgcn_8xb16-joint-u100-80e_ntu60-xsub-keypoint-2d_20221129-484a394a.pth'
+# load_from = '/workspace/skeleton/compare_experiment/skeleton/stgcn/stgcn_8xb16-joint-u100-80e_ntu60-xsub-keypoint-2d_20221129-484a394a.pth'
 # resume = True
 
 # runtime settings
