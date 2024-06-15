@@ -1,0 +1,36 @@
+# hydra config
+hydra:
+  run:
+    dir: /workspace/skeleton/logs/prepare_skeleton_dataset/${now:%Y-%m-%d}/${now:%H-%M-%S}
+
+# Path
+# step1: from raw video to extract video.
+# use YOLOv8 detection with tracking.
+extract_dataset:
+  data_path: "" # this is raw data path.
+  save_path: "/workspace/data/segmentation_dataset_512" # this is extracted video path.
+
+# step2: from extracted video to define the gait cycle.
+gait_dataset:
+  data_path: "/workspace/data/segmentation_dataset_512/" # meta four view dataset path, with human annotation.
+  save_path: "/workspace/data/seg_skeleton_pkl" # convert the four view dataset into a format of the annotation file.
+
+# mmdetection 
+mmaction:
+  det_config: '/workspace/skeleton/prepare_skeleton_dataset/faster-rcnn_r50-caffe_fpn_ms-1x_coco-person.py'  # noqa: E501
+  det_checkpoint: 'https://download.openmmlab.com/mmdetection/v2.0/faster_rcnn/faster_rcnn_r50_fpn_1x_coco-person/faster_rcnn_r50_fpn_1x_coco-person_20201216_175929-d022e227.pth'  # noqa: E501
+  det_score_thr: 0.5
+  pose_config: '/workspace/skeleton/prepare_skeleton_dataset/td-hm_hrnet-w32_8xb64-210e_coco-256x192_infer.py'  # noqa: E501
+  pose_checkpoint: 'https://download.openmmlab.com/mmpose/top_down/hrnet/hrnet_w32_coco_256x192-c78dce93_20200708.pth'  # noqa: E501
+
+
+YOLO:
+  pose_ckpt: "/workspace/skeleton/ckpt/yolov8x-pose.pt"
+  seg_ckpt: "/workspace/skeleton/ckpt/yolov8x-seg.pt"
+  bbox_ckpt: "/workspace/skeleton/ckpt/yolov8x.pt"
+  conf: 0.8
+  iou: 0.5
+  verbose: False
+  device: 0
+
+method: none
