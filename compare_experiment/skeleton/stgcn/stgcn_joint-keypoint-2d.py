@@ -4,16 +4,16 @@ model = dict(
     type='RecognizerGCN',
     backbone=dict(
         type='STGCN', graph_cfg=dict(layout='coco', mode='stgcn_spatial')),
-    cls_head=dict(type='GCNHead', num_classes=60, in_channels=256))
+    cls_head=dict(type='GCNHead', num_classes=3, in_channels=256))
 
 dataset_type = 'PoseDataset'
-ann_file = '/workspace/data/seg_skeleton_pkl/whole_annotations_numpy.pkl'
+ann_file = '/workspace/data/seg_skeleton_pkl/whole_annotations.pkl'
 train_pipeline = [
     dict(type='PreNormalize2D'),
     dict(type='GenSkeFeat', dataset='coco', feats=['j']),
     dict(type='UniformSampleFrames', clip_len=100),
     dict(type='PoseDecode'),
-    dict(type='FormatGCNInput', num_person=2),
+    dict(type='FormatGCNInput', num_person=1),
     dict(type='PackActionInputs')
 ]
 val_pipeline = [
@@ -22,7 +22,7 @@ val_pipeline = [
     dict(
         type='UniformSampleFrames', clip_len=100, num_clips=1, test_mode=True),
     dict(type='PoseDecode'),
-    dict(type='FormatGCNInput', num_person=2),
+    dict(type='FormatGCNInput', num_person=1),
     dict(type='PackActionInputs')
 ]
 test_pipeline = [
@@ -32,12 +32,12 @@ test_pipeline = [
         type='UniformSampleFrames', clip_len=100, num_clips=10,
         test_mode=True),
     dict(type='PoseDecode'),
-    dict(type='FormatGCNInput', num_person=2),
+    dict(type='FormatGCNInput', num_person=1),
     dict(type='PackActionInputs')
 ]
 
 train_dataloader = dict(
-    batch_size=32,
+    batch_size=64,
     num_workers=4,
     persistent_workers=True,
     sampler=dict(type='DefaultSampler', shuffle=True),
@@ -50,8 +50,8 @@ train_dataloader = dict(
             pipeline=train_pipeline,
             split='train')))
 val_dataloader = dict(
-    batch_size=16,
-    num_workers=2,
+    batch_size=64,
+    num_workers=4,
     persistent_workers=True,
     sampler=dict(type='DefaultSampler', shuffle=False),
     dataset=dict(
@@ -61,8 +61,8 @@ val_dataloader = dict(
         split='val',
         test_mode=True))
 test_dataloader = dict(
-    batch_size=1,
-    num_workers=2,
+    batch_size=64,
+    num_workers=4,
     persistent_workers=True,
     sampler=dict(type='DefaultSampler', shuffle=False),
     dataset=dict(
@@ -72,11 +72,11 @@ test_dataloader = dict(
         split='val',
         test_mode=True))
 
-val_evaluator = [dict(type='AccMetric')]
+val_evaluator = [dict(type='AccMetric'), dict(type='ConfusionMatrix')]
 test_evaluator = val_evaluator
 
 train_cfg = dict(
-    type='EpochBasedTrainLoop', max_epochs=16, val_begin=1, val_interval=1)
+    type='EpochBasedTrainLoop', max_epochs=100, val_begin=1, val_interval=1)
 val_cfg = dict(type='ValLoop')
 test_cfg = dict(type='TestLoop')
 
@@ -102,7 +102,7 @@ default_hooks = dict(checkpoint=dict(interval=1), logger=dict(interval=100))
 auto_scale_lr = dict(enable=False, base_batch_size=128)
 
 # ! write by mine 
-# load_from = '/workspace/skeleton/compare_experiment/skeleton/stgcn/stgcn_8xb16-joint-u100-80e_ntu60-xsub-keypoint-2d_20221129-484a394a.pth'
+load_from = '/workspace/skeleton/compare_experiment/skeleton/stgcn/stgcn_8xb16-joint-u100-80e_ntu60-xsub-keypoint-2d_20221129-484a394a.pth'
 # resume = True
 
 # runtime settings

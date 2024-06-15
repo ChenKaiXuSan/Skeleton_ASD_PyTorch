@@ -23,20 +23,12 @@ Date      	By	Comments
 import argparse
 import os
 import os.path as osp
-import torch
 
 from mmengine.config import Config, DictAction
 from mmengine.runner import Runner
 
 from mmaction.registry import RUNNERS
-from mmaction.apis import init_recognizer
 from mmengine.runner import Runner
-
-
-ckpt_file = "/workspace/skeleton/compare_experiment/skeleton/stgcn/stgcn_8xb16-joint-u100-80e_ntu60-xsub-keypoint-2d_20221129-484a394a.pth"
-config_file = "/workspace/skeleton/compare_experiment/skeleton/stgcn/stgcn_8xb16-joint-u100-80e_ntu60-xsub-keypoint-2d.py"
-
-# model = init_recognizer(config_file, ckpt_file, device='cuda:0')
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Train a action recognizer')
@@ -150,7 +142,7 @@ def merge_args(cfg, args):
 def main():
     args = parse_args()
 
-    cfg = Config.fromfile(config_file)
+    cfg = Config.fromfile(args.config)
 
     # merge cli arguments to config
     cfg = merge_args(cfg, args)
@@ -167,8 +159,9 @@ def main():
     # start training
     runner.train()
 
+    # test 
+    runner.test()
+
 
 if __name__ == '__main__':
-    # torch.multiprocessing.set_start_method('spawn')# good solution !!!!
-    # os.environ['CUDA_VISIBLE_DEVICES'] = '0'
     main()
