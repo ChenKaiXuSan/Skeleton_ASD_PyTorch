@@ -145,7 +145,7 @@ class WalkDataModule(LightningDataModule):
             stage (Optional[str], optional): trainer.stage, in ('fit', 'validate', 'test', 'predict'). Defaults to None.
         """
 
-        if self._experiment == "temporal_mix":
+        if "temporal_mix" in self._experiment:
 
             # train dataset
             self.train_gait_dataset = labeled_gait_video_dataset(

@@ -74,7 +74,7 @@ def train(hparams, dataset_idx, fold):
         classification_module = LateFusionModule(hparams)
     elif "single" in hparams.train.experiment:
         classification_module = SingleModule(hparams)
-    elif hparams.train.experiment == "temporal_mix":
+    elif "temporal_mix" in hparams.train.experiment:
         classification_module = TemporalMixModule(hparams)
     elif hparams.train.experiment == "two_stream":
         classification_module = TwoStreamModule(hparams)
