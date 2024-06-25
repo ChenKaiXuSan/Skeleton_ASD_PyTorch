@@ -7,6 +7,8 @@ Created Date: Thursday June 13th 2024
 Author: Kaixu Chen
 -----
 Comment:
+This script used for STGCN, a skeleton-based action recognition model.
+The script will load the video from the dataset, and use the yolov8 to get the keypoint, save into .pkl file.
 
 Have a good code time :)
 -----

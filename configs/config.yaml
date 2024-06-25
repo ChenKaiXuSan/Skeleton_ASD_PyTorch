@@ -41,7 +41,10 @@ train:
   clip_duration: 1 # clip duration for the video
   uniform_temporal_subsample_num: 8 # num frame from the clip duration, f or define one gait cycle, we need use whole frames.
 
-  experiment: temporal_mix # temporal_mix, late_fusion, single_stance, single_swing, single_random, two_stream, cnn_lstm, cnn
+  # ablation study: temporal_mix, late_fusion, single_stance, single_swing, single_random, 
+  # compare experiment: two_stream, cnn_lstm, cnn
+  # periodicity and symmetric: temporal_mix_periodicity, temporal_mix_symmetric
+  experiment: temporal_mix 
 
   gpu_num: 0 # choices=[0, 1], help='the gpu number whicht to train'
 

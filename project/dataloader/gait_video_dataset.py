@@ -64,9 +64,18 @@ class TemporalMix(object):
     This class is temporal mix, which is used to mix the first phase and second phase of gait cycle.
     """    
 
-    def __init__(self) -> None:
-        pass
+    def __init__(self, experiment) -> None:
 
+        if 'periodicity' in experiment:
+            self.periodicity = True
+            self.symmetric = False
+        elif 'symmetric' in experiment:
+            self.periodicity = False
+            self.symmetric = True
+        else:
+            self.periodicity = False
+            self.symmetric = False
+        
     @staticmethod
     def process_phase(phase_frame: List[torch.Tensor], phase_idx: List[int], bbox: List[torch.Tensor]) -> List[torch.Tensor]:
         """Crop the human area with bbox, and normalize them with max width.
@@ -129,17 +138,34 @@ class TemporalMix(object):
 
         return cropped_frame_list
 
-    @staticmethod
-    def fuse_frames(processed_first_phase: List[torch.Tensor], processed_second_phase: List[torch.Tensor]) -> torch.Tensor:
+    def fuse_frames(self, processed_first_phase: List[torch.Tensor], processed_second_phase: List[torch.Tensor]) -> torch.Tensor:
 
         assert len(processed_first_phase) == len(processed_second_phase), "first phase and second phase have different length"
 
         res_fused_frames: List[torch.Tensor] = []
         # TODO: fuse the frame with different phase
         for pack in range(len(processed_first_phase)):
+            
+            # 通过将stance phase最后的帧数减少，来破坏周期性
+            if self.periodicity: 
+                uniform_first_phase = uniform_temporal_subsample(processed_first_phase[pack], 8, temporal_dim=-4) # t, c, h, w
+                # FIXME: 第二周期的最后一个stanch pahse的图片数量有可能小于1无法处理。
+                try:
+                    uniform_second_phase = uniform_temporal_subsample(processed_second_phase[pack][:-5, ...], 8, temporal_dim=-4)
+                except:
+                    uniform_second_phase = uniform_temporal_subsample(processed_second_phase[pack], 8, temporal_dim=-4)
 
-            uniform_first_phase = uniform_temporal_subsample(processed_first_phase[pack], 8, temporal_dim=-4) # t, c, h, w
-            uniform_second_phase = uniform_temporal_subsample(processed_second_phase[pack], 8, temporal_dim=-4)
+            # 通过将stance phase最开始的帧数减少，来破坏对称性
+            elif self.symmetric:
+                uniform_first_phase = uniform_temporal_subsample(processed_first_phase[pack], 8, temporal_dim=-4) # t, c, h, w
+                try:
+                    uniform_second_phase = uniform_temporal_subsample(processed_second_phase[pack][5:, ...], 8, temporal_dim=-4)
+                except:
+                    uniform_second_phase = uniform_temporal_subsample(processed_second_phase[pack], 8, temporal_dim=-4)
+
+            else:
+                uniform_first_phase = uniform_temporal_subsample(processed_first_phase[pack], 8, temporal_dim=-4) # t, c, h, w
+                uniform_second_phase = uniform_temporal_subsample(processed_second_phase[pack], 8, temporal_dim=-4)
 
             # fuse width dim 
             fused_frames = torch.cat([uniform_first_phase, uniform_second_phase], dim=3)   
@@ -190,8 +216,8 @@ class LabeledGaitVideoDataset(torch.utils.data.Dataset):
         self._labeled_videos = labeled_video_paths
         self._experiment = experiment
 
-        if experiment == "temporal_mix":
-            self._temporal_mix = TemporalMix()
+        if "temporal_mix" in experiment:
+            self._temporal_mix = TemporalMix(experiment)
         else:
             self._temporal_mix = False
 
@@ -230,7 +256,7 @@ class LabeledGaitVideoDataset(torch.utils.data.Dataset):
 
         print(f"video name: {video_name}, gait cycle index: {gait_cycle_index}")
 
-        if self._experiment == "temporal_mix":
+        if "temporal_mix" in self._experiment:
             # should return the new frame, named temporal mix.
             defined_vframes = self._temporal_mix(vframes, gait_cycle_index, bbox)
             defined_vframes = self.move_transform(defined_vframes)
@@ -281,8 +307,6 @@ def labeled_gait_video_dataset(
     transform: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None,
     dataset_idx: Dict = None,
 ) -> LabeledGaitVideoDataset:
-    # TODO: 这里应该把late fusion的dataloader的方式改一下，因为目前模型并不能收敛。就很奇怪
-    # TODO: 虽然不是很想改，但是做了很多次试验，late fusion的结果都非常的奇怪。唯一能想到的问题也就是这里的dataloader的问题。stance/swing的周期图像没有匹配上，所以造成这样的结果。
 
     dataset = LabeledGaitVideoDataset(
         experiment=experiment,
