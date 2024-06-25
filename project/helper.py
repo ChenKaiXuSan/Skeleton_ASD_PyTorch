@@ -64,11 +64,11 @@ from captum.attr import visualization as viz
 
 def save_helper(config, model, dataloader, fold):
 
-    if config.train.experiment == "late_fusion":
+    if "late_fusion" in config.train.experiment:
         total_pred, total_label = save_inference_late_fusion(
             config, model, dataloader, fold
         )
-    elif config.train.experiment == "two_stream":
+    elif "two_stream" in config.train.experiment:
         total_pred, total_label = save_inference_two_stream(
             config, model, dataloader, fold
         )

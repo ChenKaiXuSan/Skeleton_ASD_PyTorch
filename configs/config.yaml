@@ -1,7 +1,10 @@
 # hydra config
 hydra:
   run:
-    dir: /workspace/skeleton/logs/${train.experiment}/${model.model}/${now:%Y-%m-%d}/${model.model_class_num}/${now:%H-%M-%S}
+    dir: /workspace/skeleton/logs/${train.experiment}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  sweep:
+    dir: /workspace/skeleton/logs/
+    subdir: ${train.experiment}/${now:%Y-%m-%d}/${now:%H-%M-%S}
 
 optimizer:
   lr: 0.0001
@@ -41,19 +44,23 @@ train:
   clip_duration: 1 # clip duration for the video
   uniform_temporal_subsample_num: 8 # num frame from the clip duration, f or define one gait cycle, we need use whole frames.
 
-  # ablation study: temporal_mix, late_fusion, single_stance, single_swing, single_random, 
-  # compare experiment: two_stream, cnn_lstm, cnn
-  # periodicity and symmetric: temporal_mix_periodicity, temporal_mix_symmetric
-  experiment: temporal_mix 
+  # ablation study: temporal_mix, late_fusion, single_stance, single_swing, single_random, < only for 3D CNN
+  # compare experiment: two_stream, cnn_lstm, cnn, 3dcnn
+  # periodicity and symmetric: 3DCNN_temporal_mix_periodicity, 3DCNN_temporal_mix_symmetric
+  backbone: 3dcnn # choices=[3dcnn, 2dcnn, cnn_lstm, two_stream], help='the backbone of the model'
+  temporal_mix: True # if use the temporal mix
+  periodicity_symmetric: periodicity # periodicity, symmetric, none
+
+  experiment: ${train.backbone}_${train.temporal_mix}_${train.periodicity_symmetric} # the experiment name
 
   gpu_num: 0 # choices=[0, 1], help='the gpu number whicht to train'
 
   # Transfer_learning
   transfer_learning: True # if use the transformer learning
 
-  log_path: /workspace/skeleton/logs/${train.experiment}/${model.model}/${now:%Y-%m-%d}/${model.model_class_num}/${now:%H-%M-%S}
+  log_path: /workspace/skeleton/logs/${train.experiment}/${now:%Y-%m-%d}/${model.model_class_num}/${now:%H-%M-%S}
 
   fast_dev_run: False # if use the fast_dev_run
   fold: 3 # the fold number of the cross validation
 
-  gait_cycle: 0 # [0, 1, -1] swing phase, stance phase, random phase. when temporal_mix=true, it does not work.
+  # gait_cycle: 0 # [0, 1, -1] swing phase, stance phase, random phase. when temporal_mix=true, it does not work.
