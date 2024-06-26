@@ -117,7 +117,7 @@ def save_inference_two_stream(config, model, dataloader, fold):
         pred_total = (pred_video_rgb + pred_video_flow) / 2
         pred_video_softmax = torch.softmax(pred_total, dim=1)
 
-        random_index = random.sample(range(0, video.size()[0]), 2)
+        # random_index = random.sample(range(0, video.size()[0]), 2)
         # save_CAM(
         #     config, model.model_rgb, video[..., 0], label, fold, "rgb", i, random_index
         # )
@@ -283,7 +283,7 @@ def save_inference(config, model, dataloader, fold):
         else:
             preds_softmax = torch.softmax(preds, dim=1)
 
-        random_index = random.sample(range(0, video.size()[0]), 2)
+        # random_index = random.sample(range(0, video.size()[0]), 2)
         # save_CAM(
         #     config,
         #     model.video_cnn,
