@@ -1,26 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding:utf-8 -*-
-'''
-File: /workspace/skeleton/project/trainer/train_two_stream copy.py
-Project: /workspace/skeleton/project/trainer
-Created Date: Sunday June 9th 2024
-Author: Kaixu Chen
------
-Comment:
-
-Have a good code time :)
------
-Last Modified: Sunday June 9th 2024 7:42:09 am
-Modified By: the developer formerly known as Kaixu Chen at <chenkaixusan@gmail.com>
------
-Copyright (c) 2024 The University of Tsukuba
------
-HISTORY:
-Date      	By	Comments
-----------	---	---------------------------------------------------------
-'''
-#!/usr/bin/env python3
-# -*- coding:utf-8 -*-
 """
 File: /workspace/skeleton/project/trainer/train_two_stream.py
 Project: /workspace/skeleton/project/trainer
