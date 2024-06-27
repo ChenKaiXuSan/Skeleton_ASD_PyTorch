@@ -15,6 +15,8 @@ HISTORY:
 Date 	By 	Comments
 ------------------------------------------------
 
+25-06-2024	Kaixu Chen	Splitting the backbone and temporal mix was used for more detailed comparison tests
+
 07-06-2024	Kaixu Chen	add two stream compare experiment.
 
 14-05-2024	Kaixu Chen	1. move the train process inside the new folder "trainer" and select based on "experiment" keyword.
@@ -70,20 +72,25 @@ def train(hparams, dataset_idx, fold):
     seed_everything(42, workers=True)
 
     # * Select the type of experiment here
-    if hparams.train.experiment == "late_fusion":
-        classification_module = LateFusionModule(hparams)
-    elif "single" in hparams.train.experiment:
-        classification_module = SingleModule(hparams)
-    elif "temporal_mix" in hparams.train.experiment:
-        classification_module = TemporalMixModule(hparams)
-    elif hparams.train.experiment == "two_stream":
+    if hparams.train.backbone == "3dcnn":
+        if hparams.train.experiment == "late_fusion":
+            classification_module = LateFusionModule(hparams)
+        elif "single" in hparams.train.experiment:
+            classification_module = SingleModule(hparams)
+        elif "temporal_mix" in hparams.train.experiment:
+            classification_module = TemporalMixModule(hparams)
+
+    elif hparams.train.backbone == "two_stream":
         classification_module = TwoStreamModule(hparams)
-    elif hparams.train.experiment == "cnn_lstm":
+
+    elif hparams.train.backbone == "cnn_lstm":
         classification_module = CNNLstmModule(hparams)
-    elif hparams.train.experiment == "cnn":
+
+    elif hparams.train.backbone == "2dcnn":
         classification_module = CNNModule(hparams)
+
     else:
-        raise ValueError("the experiment is not supported.")
+        raise ValueError("the experiment backbone is not supported.")
 
     data_module = WalkDataModule(hparams, dataset_idx)
 

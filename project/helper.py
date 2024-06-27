@@ -64,11 +64,11 @@ from captum.attr import visualization as viz
 
 def save_helper(config, model, dataloader, fold):
 
-    if config.train.experiment == "late_fusion":
+    if "late_fusion" in config.train.experiment:
         total_pred, total_label = save_inference_late_fusion(
             config, model, dataloader, fold
         )
-    elif config.train.experiment == "two_stream":
+    elif "two_stream" in config.train.experiment:
         total_pred, total_label = save_inference_two_stream(
             config, model, dataloader, fold
         )
@@ -117,7 +117,7 @@ def save_inference_two_stream(config, model, dataloader, fold):
         pred_total = (pred_video_rgb + pred_video_flow) / 2
         pred_video_softmax = torch.softmax(pred_total, dim=1)
 
-        random_index = random.sample(range(0, video.size()[0]), 2)
+        # random_index = random.sample(range(0, video.size()[0]), 2)
         # save_CAM(
         #     config, model.model_rgb, video[..., 0], label, fold, "rgb", i, random_index
         # )
@@ -262,9 +262,10 @@ def save_inference(config, model, dataloader, fold):
         label = (
             batch["label"].detach().to(f"cuda:{config.train.gpu_num}")
         )  # b, class_num
-        if config.train.experiment == "cnn_lstm":
+        if "cnn_lstm" in config.train.experiment:
             label = label.repeat_interleave(video.size()[2])
-        if config.train.experiment == "cnn":
+        
+        if "2dcnn" in config.train.experiment:
             b, c, t, h, w = video.size()
             label = label.repeat_interleave(video.size()[2])
             video = video.reshape(b*t, c, h, w)
@@ -283,7 +284,7 @@ def save_inference(config, model, dataloader, fold):
         else:
             preds_softmax = torch.softmax(preds, dim=1)
 
-        random_index = random.sample(range(0, video.size()[0]), 2)
+        # random_index = random.sample(range(0, video.size()[0]), 2)
         # save_CAM(
         #     config,
         #     model.video_cnn,

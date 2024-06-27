@@ -216,7 +216,7 @@ class LabeledGaitVideoDataset(torch.utils.data.Dataset):
         self._labeled_videos = labeled_video_paths
         self._experiment = experiment
 
-        if "temporal_mix" in experiment:
+        if "True" in experiment:
             self._temporal_mix = TemporalMix(experiment)
         else:
             self._temporal_mix = False
@@ -256,12 +256,12 @@ class LabeledGaitVideoDataset(torch.utils.data.Dataset):
 
         print(f"video name: {video_name}, gait cycle index: {gait_cycle_index}")
 
-        if "temporal_mix" in self._experiment:
+        if "True" in self._experiment:
             # should return the new frame, named temporal mix.
             defined_vframes = self._temporal_mix(vframes, gait_cycle_index, bbox)
             defined_vframes = self.move_transform(defined_vframes)
 
-        elif self._experiment == "late_fusion":
+        elif "late_fusion" in self._experiment:
 
             stance_vframes, used_gait_idx = split_gait_cycle(vframes, gait_cycle_index, 0)
             swing_vframes, used_gait_idx = split_gait_cycle(vframes, gait_cycle_index, 1)
@@ -279,9 +279,9 @@ class LabeledGaitVideoDataset(torch.utils.data.Dataset):
             defined_vframes = torch.stack([trans_stance_vframes, trans_swing_vframes], dim=-1)
 
         elif "single" in self._experiment:
-            if self._experiment == "single_stance":
+            if "stance" in self._experiment:    
                 defined_vframes, used_gait_idx = split_gait_cycle(vframes, gait_cycle_index, 0)
-            elif self._experiment == "single_swing":
+            elif "swing" in self._experiment:
                 defined_vframes, used_gait_idx = split_gait_cycle(vframes, gait_cycle_index, 1)
             
             defined_vframes = self.move_transform(defined_vframes)

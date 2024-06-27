@@ -170,6 +170,12 @@ class TwoStreamModule(LightningModule):
 
         # eval model, feed data here
         if self.training:
+            # ! The temporal mix case is an OOM problem, so clip frames
+            if single_img.shape[0] > 100:
+                single_img = single_img[:100]
+                single_flow = single_flow[:100]
+                label = label[:100]
+
             pred_video_rgb = self.model_rgb(single_img)
             pred_video_flow = self.model_flow(single_flow)
         else:
