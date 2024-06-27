@@ -262,9 +262,10 @@ def save_inference(config, model, dataloader, fold):
         label = (
             batch["label"].detach().to(f"cuda:{config.train.gpu_num}")
         )  # b, class_num
-        if config.train.experiment == "cnn_lstm":
+        if "cnn_lstm" in config.train.experiment:
             label = label.repeat_interleave(video.size()[2])
-        if config.train.experiment == "cnn":
+        
+        if "2dcnn" in config.train.experiment:
             b, c, t, h, w = video.size()
             label = label.repeat_interleave(video.size()[2])
             video = video.reshape(b*t, c, h, w)
