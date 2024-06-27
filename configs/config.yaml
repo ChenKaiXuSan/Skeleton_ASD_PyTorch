@@ -49,7 +49,7 @@ train:
   # periodicity and symmetric: 3DCNN_temporal_mix_periodicity, 3DCNN_temporal_mix_symmetric
   backbone: 3dcnn # choices=[3dcnn, 2dcnn, cnn_lstm, two_stream], help='the backbone of the model'
   temporal_mix: True # if use the temporal mix
-  periodicity_symmetric: periodicity # periodicity, symmetric, none
+  periodicity_symmetric: periodicity # periodicity, symmetric_present, none
 
   experiment: ${train.backbone}_${train.temporal_mix}_${train.periodicity_symmetric} # the experiment name
 
@@ -62,5 +62,3 @@ train:
 
   fast_dev_run: False # if use the fast_dev_run
   fold: 3 # the fold number of the cross validation
-
-  # gait_cycle: 0 # [0, 1, -1] swing phase, stance phase, random phase. when temporal_mix=true, it does not work.

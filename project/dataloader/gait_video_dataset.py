@@ -19,6 +19,9 @@ HISTORY:
 Date      	By	Comments
 ----------	---	---------------------------------------------------------
 
+27-06-2024	Kaixu Chen 增加asymmetric和nonperiodicity的对比方法。
+                        都是对stance phase进行处理。其中asymmetric可以根据比例进行破坏。
+
 27-03-2024	Kaixu Chen	make temporal mix a separate class.
 """
 
@@ -38,8 +41,6 @@ from pytorchvideo.transforms.functional import uniform_temporal_subsample
 logger = logging.getLogger(__name__)
 
 def split_gait_cycle(video_tensor: torch.Tensor, gait_cycle_index: list, gait_cycle: int):
-    # 也就是说需要根据给定的参数，能够区分不同的步行周期
-    # 例如， 2分的话，需要能区分前后， 4分的话，需要能区分前后，中间，等
 
     use_idx = []
     ans_list = []
@@ -70,6 +71,7 @@ class TemporalMix(object):
             self.periodicity = True
             self.symmetric = False
         elif 'symmetric' in experiment:
+            self.symmetric_ratio = float(experiment.split("_")[-1])
             self.periodicity = False
             self.symmetric = True
         else:
@@ -146,20 +148,32 @@ class TemporalMix(object):
         # TODO: fuse the frame with different phase
         for pack in range(len(processed_first_phase)):
             
-            # 通过将stance phase最后的帧数减少，来破坏周期性
             if self.periodicity: 
+
                 uniform_first_phase = uniform_temporal_subsample(processed_first_phase[pack], 8, temporal_dim=-4) # t, c, h, w
-                # FIXME: 第二周期的最后一个stanch pahse的图片数量有可能小于1无法处理。
+
+                # FIXME: 第二周期的最后一个stanch pahse的图片数量有可能小于1无法处理。所以简单的使用try的方法避免报错。
+
                 try:
-                    uniform_second_phase = uniform_temporal_subsample(processed_second_phase[pack][:-5, ...], 8, temporal_dim=-4)
+                    # * 通过将stance phase中的随机帧减少，来破坏周期性
+                    nonperiodicity_ratio = int(torch.randint(0, len(processed_second_phase[pack]) - 3, (1,)))
+
+                    truncated_second_phase = torch.cat([processed_second_phase[pack][:nonperiodicity_ratio, ...], processed_second_phase[pack][nonperiodicity_ratio+3:, ...]], dim=0)
+
+                    uniform_second_phase = uniform_temporal_subsample(truncated_second_phase, 8, temporal_dim=-4)
+
                 except:
                     uniform_second_phase = uniform_temporal_subsample(processed_second_phase[pack], 8, temporal_dim=-4)
 
             # 通过将stance phase最开始的帧数减少，来破坏对称性
             elif self.symmetric:
                 uniform_first_phase = uniform_temporal_subsample(processed_first_phase[pack], 8, temporal_dim=-4) # t, c, h, w
+
+                # 根据给定的比例来进行相位的移动
+                asymmetric_ratio = int((self.symmetric_ratio * len(processed_second_phase[pack])))
+
                 try:
-                    uniform_second_phase = uniform_temporal_subsample(processed_second_phase[pack][5:, ...], 8, temporal_dim=-4)
+                    uniform_second_phase = uniform_temporal_subsample(processed_second_phase[pack][asymmetric_ratio:, ...], 8, temporal_dim=-4)
                 except:
                     uniform_second_phase = uniform_temporal_subsample(processed_second_phase[pack], 8, temporal_dim=-4)
 
