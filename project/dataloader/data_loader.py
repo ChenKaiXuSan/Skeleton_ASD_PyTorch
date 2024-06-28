@@ -61,8 +61,8 @@ class WalkDataModule(LightningDataModule):
     def __init__(self, opt, dataset_idx: Dict = None):
         super().__init__()
 
-        self._seg_path = opt.data.seg_data_path
-        self._gait_seg_path = opt.data.gait_seg_data_path
+        # self._seg_path = opt.data.seg_data_path
+        # self._gait_seg_path = opt.data.gait_seg_data_path
 
         # ? 感觉batch size对最后的结果有影响，所以分开使用不同的batch size
         self._gait_cycle_batch_size = opt.data.gait_cycle_batch_size
@@ -175,7 +175,7 @@ class WalkDataModule(LightningDataModule):
                 transform=self.mapping_transform,
             )
 
-        else: 
+        else:
 
             if "single" in self._backbone:
 
@@ -240,7 +240,7 @@ class WalkDataModule(LightningDataModule):
                 )
 
             elif (
-                "two_stream" in self._backbone 
+                "two_stream" in self._backbone
                 or "cnn_lstm" in self._backbone
                 or "2dcnn" in self._backbone
             ):
@@ -266,7 +266,7 @@ class WalkDataModule(LightningDataModule):
                     clip_sampler=make_clip_sampler("uniform", 1),
                     transform=self.val_video_transform,
                 )
-            
+
             else:
                 raise ValueError("the experiment backbone is not supported.")
 
@@ -323,13 +323,13 @@ class WalkDataModule(LightningDataModule):
 
         if self._temporal_mix:
             train_data_loader = DataLoader(
-            self.train_gait_dataset,
-            batch_size=self._gait_cycle_batch_size,
-            num_workers=self._NUM_WORKERS,
-            pin_memory=True,
-            shuffle=False,
-            drop_last=True,
-            collate_fn=self.collate_fn,
+                self.train_gait_dataset,
+                batch_size=self._gait_cycle_batch_size,
+                num_workers=self._NUM_WORKERS,
+                pin_memory=True,
+                shuffle=False,
+                drop_last=True,
+                collate_fn=self.collate_fn,
             )
         else:
             train_data_loader = DataLoader(
@@ -349,20 +349,20 @@ class WalkDataModule(LightningDataModule):
         in directory and subdirectory. Add transform that subsamples and
         normalizes the video before applying the scale, crop and flip augmentations.
         """
-        
+
         if self._temporal_mix:
             val_data_loader = DataLoader(
-            self.train_gait_dataset,
-            batch_size=self._gait_cycle_batch_size,
-            num_workers=self._NUM_WORKERS,
-            pin_memory=True,
-            shuffle=False,
-            drop_last=True,
-            collate_fn=self.collate_fn,
+                self.val_gait_dataset,
+                batch_size=self._gait_cycle_batch_size,
+                num_workers=self._NUM_WORKERS,
+                pin_memory=True,
+                shuffle=False,
+                drop_last=True,
+                collate_fn=self.collate_fn,
             )
         else:
             val_data_loader = DataLoader(
-                self.train_gait_dataset,
+                self.val_gait_dataset,
                 batch_size=self._default_batch_size,
                 num_workers=self._NUM_WORKERS,
                 pin_memory=True,
@@ -380,24 +380,23 @@ class WalkDataModule(LightningDataModule):
         """
 
         if self._temporal_mix:
-                val_data_loader = DataLoader(
-                self.train_gait_dataset,
+            test_data_loader = DataLoader(
+                self.test_gait_dataset,
                 batch_size=self._gait_cycle_batch_size,
                 num_workers=self._NUM_WORKERS,
                 pin_memory=True,
                 shuffle=False,
                 drop_last=True,
                 collate_fn=self.collate_fn,
-                )
+            )
         else:
-            val_data_loader = DataLoader(
-                self.train_gait_dataset,
+            test_data_loader = DataLoader(
+                self.test_gait_dataset,
                 batch_size=self._default_batch_size,
                 num_workers=self._NUM_WORKERS,
                 pin_memory=True,
                 shuffle=False,
                 drop_last=True,
             )
- 
 
-        return val_data_loader
+        return test_data_loader
