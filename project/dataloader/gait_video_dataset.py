@@ -56,7 +56,7 @@ def split_gait_cycle(video_tensor: torch.Tensor, gait_cycle_index: list, gait_cy
             ans_list.append(video_tensor[gait_cycle_index[i]:gait_cycle_index[i+1], ...])
             use_idx.append(gait_cycle_index[i])
 
-    print(f"used split gait cycle index: {use_idx}")
+    # print(f"used split gait cycle index: {use_idx}")
     
     return ans_list, use_idx # needed gait cycle video tensor
 
@@ -196,6 +196,7 @@ class TemporalMix(object):
 
         # * step1: first find the phase frames (pack) and phase index.
         first_phase, first_phase_idx = split_gait_cycle(video_tensor, gait_cycle_index, 0)
+        # TODO: 这里应该在最后补stance phase的最后
         second_phase, second_phase_idx = split_gait_cycle(video_tensor, gait_cycle_index, 1)
 
         # check if first phse and second phase have the same length
@@ -268,7 +269,7 @@ class LabeledGaitVideoDataset(torch.utils.data.Dataset):
         bbox_none_index = file_info_dict["none_index"]
         bbox = file_info_dict["bbox"]
 
-        print(f"video name: {video_name}, gait cycle index: {gait_cycle_index}")
+        # print(f"video name: {video_name}, gait cycle index: {gait_cycle_index}")
 
         if "True" in self._experiment:
             # should return the new frame, named temporal mix.

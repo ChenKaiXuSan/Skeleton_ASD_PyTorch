@@ -327,7 +327,7 @@ class WalkDataModule(LightningDataModule):
                 batch_size=self._gait_cycle_batch_size,
                 num_workers=self._NUM_WORKERS,
                 pin_memory=True,
-                shuffle=False,
+                shuffle=True,
                 drop_last=True,
                 collate_fn=self.collate_fn,
             )
@@ -353,10 +353,11 @@ class WalkDataModule(LightningDataModule):
         if self._temporal_mix:
             val_data_loader = DataLoader(
                 self.val_gait_dataset,
-                batch_size=self._gait_cycle_batch_size,
+                # batch_size=self._gait_cycle_batch_size,
+                batch_size = 16, 
                 num_workers=self._NUM_WORKERS,
                 pin_memory=True,
-                shuffle=False,
+                shuffle=True,
                 drop_last=True,
                 collate_fn=self.collate_fn,
             )
@@ -382,10 +383,11 @@ class WalkDataModule(LightningDataModule):
         if self._temporal_mix:
             test_data_loader = DataLoader(
                 self.test_gait_dataset,
-                batch_size=self._gait_cycle_batch_size,
+                # batch_size=self._gait_cycle_batch_size,
+                batch_size = 16,
                 num_workers=self._NUM_WORKERS,
                 pin_memory=True,
-                shuffle=False,
+                shuffle=True,
                 drop_last=True,
                 collate_fn=self.collate_fn,
             )
