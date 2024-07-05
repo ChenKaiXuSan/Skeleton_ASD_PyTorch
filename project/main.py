@@ -131,8 +131,8 @@ def train(hparams, dataset_idx, fold):
         ],
         accelerator="gpu",
         max_epochs=hparams.train.max_epochs,
-        # limit_train_batches=10,
-        # limit_val_batches=10,
+        # limit_train_batches=2,
+        # limit_val_batches=2,
         logger=tb_logger,  # wandb_logger,
         check_val_every_n_epoch=1,
         callbacks=[

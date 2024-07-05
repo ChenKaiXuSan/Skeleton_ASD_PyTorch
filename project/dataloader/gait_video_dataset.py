@@ -68,6 +68,7 @@ class TemporalMix(object):
     def __init__(self, experiment) -> None:
 
         if 'periodicity' in experiment:
+            self.periodicity_ratio = float(experiment.split("_")[-1])
             self.periodicity = True
             self.symmetric = False
         elif 'symmetric' in experiment:
@@ -153,12 +154,14 @@ class TemporalMix(object):
                 uniform_first_phase = uniform_temporal_subsample(processed_first_phase[pack], 8, temporal_dim=-4) # t, c, h, w
 
                 # FIXME: 第二周期的最后一个stanch pahse的图片数量有可能小于1无法处理。所以简单的使用try的方法避免报错。
+                # 根据给定的比例来随机破坏周期性
+                non_periodicity_ratio = int((self.periodicity_ratio * len(processed_second_phase[pack])))
 
                 try:
                     # * 通过将stance phase中的随机帧减少，来破坏周期性
-                    nonperiodicity_ratio = int(torch.randint(0, len(processed_second_phase[pack]) - 3, (1,)))
+                    nonperiodicity_ratio = int(torch.randint(0, len(processed_second_phase[pack]) - non_periodicity_ratio, (1,)))
 
-                    truncated_second_phase = torch.cat([processed_second_phase[pack][:nonperiodicity_ratio, ...], processed_second_phase[pack][nonperiodicity_ratio+3:, ...]], dim=0)
+                    truncated_second_phase = torch.cat([processed_second_phase[pack][:nonperiodicity_ratio, ...], processed_second_phase[pack][nonperiodicity_ratio+non_periodicity_ratio:, ...]], dim=0)
 
                     uniform_second_phase = uniform_temporal_subsample(truncated_second_phase, 8, temporal_dim=-4)
 

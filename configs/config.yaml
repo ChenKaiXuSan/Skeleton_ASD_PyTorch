@@ -46,10 +46,11 @@ train:
 
   # ablation study: temporal_mix, late_fusion, single_stance, single_swing, single_random, < only for 3D CNN
   # compare experiment: two_stream, cnn_lstm, cnn, 3dcnn
-  # periodicity and symmetric: 3DCNN_temporal_mix_periodicity, 3DCNN_temporal_mix_symmetric
+  # non periodicity: 5, 8
+  # asymmetric: 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9
   backbone: 3dcnn # choices=[3dcnn, 2dcnn, cnn_lstm, two_stream], help='the backbone of the model'
   temporal_mix: True # if use the temporal mix
-  periodicity_symmetric: periodicity # periodicity, symmetric_present, none
+  periodicity_symmetric: periodicity # periodicity, symmetric_present, none. type_ratio for periodicity and symmetric
 
   experiment: ${train.backbone}_${train.temporal_mix}_${train.periodicity_symmetric} # the experiment name
 
