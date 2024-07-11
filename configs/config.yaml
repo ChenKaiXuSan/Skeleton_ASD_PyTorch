@@ -1,10 +1,10 @@
 # hydra config
 hydra:
   run:
-    dir: /workspace/skeleton/logs/${train.experiment}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    dir: /workspace/skeleton/logs/${train.experiment}/${train.clip_duration}_${train.uniform_temporal_subsample_num}/${now:%Y-%m-%d}/${now:%H-%M-%S}
   sweep:
     dir: /workspace/skeleton/logs/
-    subdir: ${train.experiment}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    subdir: ${train.experiment}/${train.clip_duration}_${train.uniform_temporal_subsample_num}/${now:%Y-%m-%d}/${now:%H-%M-%S}
 
 optimizer:
   lr: 0.0001
@@ -59,7 +59,7 @@ train:
   # Transfer_learning
   transfer_learning: True # if use the transformer learning
 
-  log_path: /workspace/skeleton/logs/${train.experiment}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  log_path: /workspace/skeleton/logs/${train.experiment}/${train.clip_duration}_${train.uniform_temporal_subsample_num}/${now:%Y-%m-%d}/${now:%H-%M-%S}
 
   fast_dev_run: False # if use the fast_dev_run
   fold: 3 # the fold number of the cross validation
