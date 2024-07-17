@@ -73,12 +73,14 @@ def train(hparams, dataset_idx, fold):
 
     # * Select the type of experiment here
     if hparams.train.backbone == "3dcnn":
-        if hparams.train.experiment == "late_fusion":
+        if "late_fusion" in hparams.train.experiment:
             classification_module = LateFusionModule(hparams)
         elif "single" in hparams.train.experiment:
             classification_module = SingleModule(hparams)
-        elif "temporal_mix" in hparams.train.experiment:
+        elif hparams.train.temporal_mix:
             classification_module = TemporalMixModule(hparams)
+        else:
+            raise ValueError(f"the {hparams.train.experiment} is not supported.")
 
     elif hparams.train.backbone == "two_stream":
         classification_module = TwoStreamModule(hparams)
@@ -129,6 +131,8 @@ def train(hparams, dataset_idx, fold):
         ],
         accelerator="gpu",
         max_epochs=hparams.train.max_epochs,
+        # limit_train_batches=2,
+        # limit_val_batches=2,
         logger=tb_logger,  # wandb_logger,
         check_val_every_n_epoch=1,
         callbacks=[

@@ -1,10 +1,10 @@
 # hydra config
 hydra:
   run:
-    dir: /workspace/skeleton/logs/${train.experiment}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    dir: /workspace/skeleton/logs/${train.experiment}/${train.clip_duration}_${train.uniform_temporal_subsample_num}/${now:%Y-%m-%d}/${now:%H-%M-%S}
   sweep:
     dir: /workspace/skeleton/logs/
-    subdir: ${train.experiment}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+    subdir: ${train.experiment}/${train.clip_duration}_${train.uniform_temporal_subsample_num}/${now:%Y-%m-%d}/${now:%H-%M-%S}
 
 optimizer:
   lr: 0.0001
@@ -46,10 +46,11 @@ train:
 
   # ablation study: temporal_mix, late_fusion, single_stance, single_swing, single_random, < only for 3D CNN
   # compare experiment: two_stream, cnn_lstm, cnn, 3dcnn
-  # periodicity and symmetric: 3DCNN_temporal_mix_periodicity, 3DCNN_temporal_mix_symmetric
+  # non periodicity: 5, 8
+  # asymmetric: 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9
   backbone: 3dcnn # choices=[3dcnn, 2dcnn, cnn_lstm, two_stream], help='the backbone of the model'
   temporal_mix: True # if use the temporal mix
-  periodicity_symmetric: periodicity # periodicity, symmetric, none
+  periodicity_symmetric: periodicity # periodicity, symmetric_present, none. type_ratio for periodicity and symmetric
 
   experiment: ${train.backbone}_${train.temporal_mix}_${train.periodicity_symmetric} # the experiment name
 
@@ -58,9 +59,7 @@ train:
   # Transfer_learning
   transfer_learning: True # if use the transformer learning
 
-  log_path: /workspace/skeleton/logs/${train.experiment}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  log_path: /workspace/skeleton/logs/${train.experiment}/${train.clip_duration}_${train.uniform_temporal_subsample_num}/${now:%Y-%m-%d}/${now:%H-%M-%S}
 
   fast_dev_run: False # if use the fast_dev_run
   fold: 3 # the fold number of the cross validation
-
-  # gait_cycle: 0 # [0, 1, -1] swing phase, stance phase, random phase. when temporal_mix=true, it does not work.
