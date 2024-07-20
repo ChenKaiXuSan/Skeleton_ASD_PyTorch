@@ -70,6 +70,31 @@ We prepared two different ablation experiments as follows.
 2. second ablation study
 We use same backbone architecture with different training strategy.
 
+
+## How to run
+
+1. install dependencies
+
+``` bash
+# clone project   
+git clone https://github.com/ChenKaiXuSan/Skeleton_ASD_PyTorch.git
+
+# install project   
+cd Skeleton_ASD_PyTorch/ 
+pip install -e .   
+pip install -r requirements.txt
+```
+
+2. navigate to any file and run it.
+
+```bash
+# module folder
+cd Skeleton_ASD_PyTorch/
+
+# run module 
+python project/main.py [option] > logs/output_log/xxx.log 
+```
+
 ## Docker  
 
 We recommend using docker to build the training environment.
