@@ -119,7 +119,7 @@ def train(hparams, dataset_idx, fold):
     # define the early stop.
     early_stopping = EarlyStopping(
         monitor="val/video_acc",
-        patience=2,
+        patience=3,
         mode="max",
     )
 
