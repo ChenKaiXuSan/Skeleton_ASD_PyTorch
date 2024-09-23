@@ -15,6 +15,8 @@ HISTORY:
 Date 	By 	Comments
 ------------------------------------------------
 
+23-09-2024	Kaixu Chen	add compare experiment, phasemix with different backbone, like 3dcnn, 2dcnn, cnn_lstm.
+
 25-06-2024	Kaixu Chen	Splitting the backbone and temporal mix was used for more detailed comparison tests
 
 07-06-2024	Kaixu Chen	add two stream compare experiment.

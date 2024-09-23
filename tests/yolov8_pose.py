@@ -122,7 +122,6 @@ def calc_angle(mid_angle_Dict: dict) -> torch.Tensor:
 
         print(angle_radians)
 
-        # ! 坐标系有问题，还需要再调整
         angle_deg = torch.rad2deg(angle_radians)
         print(180 - angle_deg)
 

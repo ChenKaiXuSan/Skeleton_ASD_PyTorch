@@ -225,7 +225,6 @@ def main(parames):
     for t in threads:
         t.join()
 
-    # FIXME: 因为没办法再加载线程的时候更换GPU，所以只能分开处理
     process(parames, "fold0", ["DHS"])
 
     merge_pkl(parames)

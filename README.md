@@ -25,7 +25,7 @@ F --> G[final result]
 
 ## Description
 
-We present a method that can effectively **capture cycle** and **action symmetry** information in motion and exploit the characteristics of gait motion.
+We present a method that can effectively capture **motion periodicity** and **action symmetry** information in motion and exploit the characteristics of gait motion.
 Our experiments, performed on a video dataset consisting of 81 different patients, showed that our method outperformed baseline approaches. 
 The proposed method achieved an accuracy of 71.43, a precision of 72.80, and an F1 score of 71.15.
 
@@ -69,7 +69,10 @@ We prepared two different ablation experiments as follows.
 
 2. second ablation study
 We use same backbone architecture with different training strategy.
-
+Like:
+- early fusion
+- late fusion
+- random
 
 ## How to run
 

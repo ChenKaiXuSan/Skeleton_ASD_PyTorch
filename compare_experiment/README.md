@@ -1,60 +1,42 @@
-# 对比试验
+# Comparative Experiments
 
-我们比较了提出的方法和一些经典的方法，包括2D CNN、CNN-LSTM、3D CNN、Two-stream、Skeleton-based等方法。
-我们分别复现了这些方法，并在我们的数据集上进行了测试，以进行对比。
-下面我们详细记录了每个方法的复现和测试过程。
+We compared the proposed method with several classical approaches, including 2D CNN, CNN-LSTM, 3D CNN, Two-stream, and Skeleton-based methods. We reproduced these methods and tested them on our dataset for comparison. Below, we provide detailed documentation of the reproduction and testing processes for each method.
 
 ## 2D CNN Action Recognition
 
-我们在不考虑时间信息的情况下，使用2D CNN来进行动作识别。
-在这里我们使用Restnet50作为backbone，然后在最后加上一个全连接层来进行分类。
-使用了在ImageNet上预训练的模型来进行训练。
+We performed action recognition using a 2D CNN without considering temporal information. Here, we used ResNet50 as the backbone and added a fully connected layer at the end for classification. The model was trained using a pre-trained model on ImageNet.
 
 ## CNN-LSTM Action Recognition
 
-我们在考虑时间信息的情况下，使用CNN-LSTM来进行动作识别。
-其中CNN部分使用Restnet50作为backbone，进行特征提取。
-然后将提取的特征输入到LSTM中，来学习时间信息。
-最后在LSTM的输出上加上一个全连接层来进行分类。
-CNN部分使用了在ImageNet上预训练的模型来进行训练。
+For this approach, we considered temporal information using CNN-LSTM for action recognition. The CNN part uses ResNet50 as the backbone for feature extraction. The extracted features are then fed into the LSTM to learn temporal information. Finally, a fully connected layer is added to the LSTM output for classification. The CNN part was trained using a pre-trained model on ImageNet.
 
 ## 3D CNN Action Recognition
 
-3D CNN是一种专门用来处理视频数据的网络结构。
-在这里我们使用了Resnet50 3DCNN网络来进行动作识别。
-我们使用了在Kinetics上预训练的模型来进行训练。
+3D CNN is a network structure specifically designed for processing video data. Here, we used a ResNet50 3D CNN network for action recognition. We used a pre-trained model on the Kinetics dataset for training.
 
 ## Two-stream Action Recognition
 
-Two-stream是一种结合了光流信息和RGB信息的网络结构。
-在这里我们首先将视频帧转换为静态图像，然后分别训练RGB和光流网络。
-最后将两个网络的输出进行融合，来进行动作识别。
+Two-stream is a network structure that combines optical flow and RGB information. Here, we first converted video frames into static images and then trained RGB and optical flow networks separately. The outputs of the two networks were then fused for action recognition.
 
-对于光流网络，我们使用了RAFT方法来进行光流估计，然后将光流数据作为输入训练光流网络。
-对于RGB网络，我们使用了Resnet50作为backbone，进行特征提取。
-我们使用在ImageNet上预训练的模型来进行训练。
+For the optical flow network, we used the RAFT method for optical flow estimation and used the optical flow data as input to train the optical flow network. For the RGB network, we used ResNet50 as the backbone for feature extraction. The models were trained using pre-trained models on ImageNet.
 
-我们训练100个epoch，没有使用early stopping。详细配置可以在`/compare_experiment/skeleton/stgcn/stgcn_joint-keypoint-2d.py`中查看。
+We trained for 100 epochs without using early stopping. Detailed configurations can be found in `/compare_experiment/skeleton/stgcn/stgcn_joint-keypoint-2d.py`.
 
 ## Skeleton-based Action Recognition
 
-Skeleton-based是一种基于骨架数据的动作识别方法。
-在这里我们使用了STGCN来进行动作识别。
+Skeleton-based action recognition methods utilize skeleton data for action recognition. Here, we used STGCN for action recognition.
 
-我们首先使用YOLOv8来提取视频中的骨架数据，然后将骨架数据输入到STGCN中进行训练。
-这里我们使用了在NTU RGB+D上预训练的模型来进行训练。
+We first used YOLOv8 to extract skeleton data from videos and then input the skeleton data into STGCN for training. We used a pre-trained model on the NTU RGB+D dataset for training.
 
-### Prepare Skeleton dataset
+### Prepare Skeleton Dataset
 
-由于我们的数据集是视频格式，如果想要使用基于skeleton的方法来进行动作识别，我们需要先将视频转换为skeleton数据。
-这里我们参考了mmaction2官网的提取方式，使用Yolov8来提取skeleton数据并保存成为.pkl格式文件。
+Since our dataset is in video format, we need to convert the videos into skeleton data to use skeleton-based methods for action recognition. We referred to the extraction method provided on the mmaction2 official website, using YOLOv8 to extract skeleton data and save it in `.pkl` format.
 
-具体的提取脚本在`/prepare_skeleton_dataset/main_yolov8.py`中执行。
-这里使用yolov8来对视频进行检测，然后提取出skeleton数据。包含18个关键点，每个关键点包含x,y坐标和置信度。
+The extraction script can be executed using `/prepare_skeleton_dataset/main_yolov8.py`. This script uses YOLOv8 for video detection and extracts skeleton data, which includes 18 key points, with each key point containing x, y coordinates and confidence score.
 
-你可以使用如下命令来生成skeleton数据：
+You can generate the skeleton data using the following command:
 
-```python3
+```python
 python main_yolov8.py 
 ```
 
