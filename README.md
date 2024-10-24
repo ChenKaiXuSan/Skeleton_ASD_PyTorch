@@ -2,7 +2,7 @@
  
 # PhaseMix: A Periodic Motion Fusion Method for Adult Spinal Deformity Classification
   
-[![Paper](https://th.bing.com/th/id/OIP.OApPGO-KBlk8WU2PEixK-gHaHa?rs=1&pid=ImgDetMain)](https://ieeexplore.ieee.org/document/10714330)
+[![Paper](https://open.ieee.org/wp-content/uploads/ieee-open-logo2x.png)](https://ieeexplore.ieee.org/document/10714330)
 
 </div>
  
