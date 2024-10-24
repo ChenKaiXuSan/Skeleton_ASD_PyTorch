@@ -118,7 +118,7 @@ docker exec -it container_name bash
 ## Citation
 
 ```
-@article{@ARTICLE{10714330,
+@ARTICLE{10714330,
   author={Chen, Kaixu and Xu, Jiayi and Asada, Tomoyuki and Miura, Kousei and Sakashita, Kotaro and Sunami, Takahiro and Kadone, Hideki and Yamazaki, Masashi and Ienaga, Naoto and Kuroda, Yoshihiro},
   journal={IEEE Access}, 
   title={PhaseMix: A Periodic Motion Fusion Method for Adult Spinal Deformity Classification}, 
@@ -128,6 +128,4 @@ docker exec -it container_name bash
   pages={152358-152376},
   keywords={Legged locomotion;Feature extraction;Accuracy;Human activity recognition;Reviews;Face recognition;Diseases;Deep learning;Cameras;Surgery;Deep learning;Medical services;Adult spinal deformity;deep learning;human action recognition;healthcare;gait posture;periodic motion;motion symmetry},
   doi={10.1109/ACCESS.2024.3479165}}
-
-}
 ```
