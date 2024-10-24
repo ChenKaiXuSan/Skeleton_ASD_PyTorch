@@ -2,15 +2,8 @@
  
 # PhaseMix: A Periodic Motion Fusion Method for Adult Spinal Deformity Classification
   
-<!--
-ARXIV   
-[![Paper](http://img.shields.io/badge/arxiv-math.co:1480.1111-B31B1B.svg)](https://www.nature.com/articles/nature14539)
--->
-<!-- ![CI testing](https://github.com/PyTorchLightning/deep-learning-project-template/workflows/CI%20testing/badge.svg?branch=master&event=push) -->
+[![Paper](https://th.bing.com/th/id/OIP.OApPGO-KBlk8WU2PEixK-gHaHa?rs=1&pid=ImgDetMain)](https://ieeexplore.ieee.org/document/10714330)
 
-<!--  
-Conference   
--->
 </div>
  
 ``` mermaid
@@ -121,14 +114,20 @@ docker run -itd -v $(pwd)/path:/path --gpus all --name container_name --shm-size
 docker exec -it container_name bash
 ```
 
-<!-- 
+
 ## Citation
 
 ```
-@article{YourName,
-  title={Your Title},
-  author={Your team},
-  journal={Location},
-  year={Year}
+@article{@ARTICLE{10714330,
+  author={Chen, Kaixu and Xu, Jiayi and Asada, Tomoyuki and Miura, Kousei and Sakashita, Kotaro and Sunami, Takahiro and Kadone, Hideki and Yamazaki, Masashi and Ienaga, Naoto and Kuroda, Yoshihiro},
+  journal={IEEE Access}, 
+  title={PhaseMix: A Periodic Motion Fusion Method for Adult Spinal Deformity Classification}, 
+  year={2024},
+  volume={12},
+  number={},
+  pages={152358-152376},
+  keywords={Legged locomotion;Feature extraction;Accuracy;Human activity recognition;Reviews;Face recognition;Diseases;Deep learning;Cameras;Surgery;Deep learning;Medical services;Adult spinal deformity;deep learning;human action recognition;healthcare;gait posture;periodic motion;motion symmetry},
+  doi={10.1109/ACCESS.2024.3479165}}
+
 }
-``` -->
+```
