@@ -457,7 +457,7 @@ def save_CAM(
         inp_tensor = (
             input_tensor[num].permute(1, 2, 3, 0)[-1].cpu().detach().numpy()
         )  # display original image
-        cam_map = grayscale_cam.squeeze().mean(axis=2, keepdims=True)
+        cam_map = grayscale_cam.squeeze().mean(axis=2, keepdims=True) # b, c, t, h, w
 
         figure, axis = viz.visualize_image_attr(
             cam_map,

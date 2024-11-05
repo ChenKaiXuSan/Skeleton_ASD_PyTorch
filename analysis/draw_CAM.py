@@ -240,7 +240,7 @@ if save_path.exists() is False:
     save_path.mkdir(parents=True)
 
 grayscale_cam = cam(
-    video[0:1], aug_smooth=True, eigen_smooth=True
+    video[0:1], aug_smooth=False, eigen_smooth=True
 )
 output = cam.outputs
 

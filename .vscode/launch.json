@@ -8,7 +8,7 @@
       "name": "Python: Current File",
       "type": "debugpy",
       "request": "launch",
-      "justMyCode": true,
+      "justMyCode": false,
       "program": "${file}",
       "console": "integratedTerminal",
     },
