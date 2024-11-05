@@ -188,8 +188,8 @@ class TemporalMix(object):
             fused_frames = torch.cat([uniform_first_phase, uniform_second_phase], dim=3)   
 
             # write the fused frame to png
-            for i in range(fused_frames.size()[0]): 
-                write_png(input=fused_frames[i], filename=f'/workspace/skeleton/logs/img/fused{i}.png')
+            # for i in range(fused_frames.size()[0]): 
+            #     write_png(input=fused_frames[i], filename=f'/workspace/project/logs/img/fused{i}.png')
 
             res_fused_frames.append(fused_frames)
             
