@@ -41,7 +41,6 @@ from pytorchvideo.transforms import (
 
 from typing import Any, Callable, Dict, Optional, Type
 from pytorch_lightning import LightningDataModule
-from pytorch_lightning.trainer.supporters import CombinedLoader
 
 import torch
 from torch.utils.data import DataLoader

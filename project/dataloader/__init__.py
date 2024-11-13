@@ -9,7 +9,7 @@ Comment:
  
 Have a good code time!
 -----
-Last Modified: Thursday October 19th 2023 2:24:37 am
+Last Modified: Saturday April 6th 2024 8:08:31 am
 Modified By: the developer formerly known as Kaixu Chen at <chenkaixusan@gmail.com>
 -----
 HISTORY:
@@ -19,7 +19,7 @@ Date 	By 	Comments
 '''
 
 import sys
-sys.path.append('/workspace/skeleton/project/dataloader')
+sys.path.append('/workspace/project/project/dataloader')
 
 from data_loader import *
 from gait_video_dataset import *
