@@ -10,7 +10,7 @@ Comment:
 
 Have a good code time :)
 -----
-Last Modified: Monday June 10th 2024 6:51:10 am
+Last Modified: Monday June 10th 2024 12:42:58 pm
 Modified By: the developer formerly known as Kaixu Chen at <chenkaixusan@gmail.com>
 -----
 Copyright (c) 2024 The University of Tsukuba
@@ -21,15 +21,13 @@ Date      	By	Comments
 '''
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from pytorch_lightning import LightningModule
 
 from torchvision.io import write_video
 from torchvision.utils import save_image, flow_to_image
 
-from models.make_model import MakeImageModule
-
-from pytorch_lightning import LightningModule
+from project.models.make_model import MakeImageModule
 
 from torchmetrics.classification import (
     MulticlassAccuracy,

@@ -15,6 +15,10 @@ HISTORY:
 Date 	By 	Comments
 ------------------------------------------------
 
+26-11-2024	Kaixu Chen	refactor the code, now run script in python -m project.main
+
+26-11-2024	Kaixu Chen	add attention branch network (ATN) for compare experiment.
+
 23-09-2024	Kaixu Chen	add compare experiment, phasemix with different backbone, like 3dcnn, 2dcnn, cnn_lstm.
 
 25-06-2024	Kaixu Chen	Splitting the backbone and temporal mix was used for more detailed comparison tests
@@ -42,24 +46,31 @@ from pytorch_lightning.callbacks import (
     LearningRateMonitor,
 )
 
-from dataloader.data_loader import WalkDataModule
+from project.dataloader.data_loader import WalkDataModule
+
+#############################
+# select different experiment
+#############################
 
 # 3D CNN model
-from trainer.train_single import SingleModule
-from trainer.train_late_fusion import LateFusionModule
-from trainer.train_temporal_mix import TemporalMixModule
+from project.trainer.train_single import SingleModule
+from project.trainer.train_late_fusion import LateFusionModule
+from project.trainer.train_temporal_mix import TemporalMixModule
 # compare experiment
-from trainer.train_two_stream import TwoStreamModule
-from trainer.train_cnn_lstm import CNNLstmModule
-from trainer.train_cnn import CNNModule
+from project.trainer.train_two_stream import TwoStreamModule
+from project.trainer.train_cnn_lstm import CNNLstmModule
+from project.trainer.train_cnn import CNNModule
+# ATN 
+from project.trainer.train_backbone_atn import BackboneATNModule
 
 import hydra
+from omegaconf import DictConfig
 
-from cross_validation import DefineCrossValidation
-from helper import save_helper
+from project.cross_validation import DefineCrossValidation
+from project.helper import save_helper
 
 
-def train(hparams, dataset_idx, fold):
+def train(hparams: DictConfig, dataset_idx, fold: int):
     """the train process for the one fold.
 
     Args:
@@ -73,8 +84,9 @@ def train(hparams, dataset_idx, fold):
 
     seed_everything(42, workers=True)
 
-    # * Select the type of experiment here
+    # * select experiment
     if hparams.train.backbone == "3dcnn":
+        # * ablation study 2: different training strategy
         if "late_fusion" in hparams.train.experiment:
             classification_module = LateFusionModule(hparams)
         elif "single" in hparams.train.experiment:
@@ -83,6 +95,8 @@ def train(hparams, dataset_idx, fold):
             classification_module = TemporalMixModule(hparams)
         else:
             raise ValueError(f"the {hparams.train.experiment} is not supported.")
+    elif hparams.train.backbone == "3dcnn_atn":
+        classification_module = BackboneATNModule(hparams)
 
     elif hparams.train.backbone == "two_stream":
         classification_module = TwoStreamModule(hparams)
@@ -169,13 +183,13 @@ def train(hparams, dataset_idx, fold):
 
 @hydra.main(
     version_base=None,
-    config_path="/workspace/skeleton/configs",
+    config_path="../configs", # * the config_path is relative to location of the python script
     config_name="config.yaml",
 )
 def init_params(config):
-    #############
+    #######################
     # prepare dataset index
-    #############
+    #######################
 
     fold_dataset_idx = DefineCrossValidation(config)()
 
@@ -183,9 +197,9 @@ def init_params(config):
     logging.info("Start train all fold")
     logging.info("#" * 50)
 
-    #############
+    #########
     # K fold
-    #############
+    #########
     # * for one fold, we first train/val model, then save the best ckpt preds/label into .pt file.
 
     for fold, dataset_value in fold_dataset_idx.items():
@@ -205,5 +219,6 @@ def init_params(config):
 
 
 if __name__ == "__main__":
+
     os.environ["HYDRA_FULL_ERROR"] = "1"
     init_params()

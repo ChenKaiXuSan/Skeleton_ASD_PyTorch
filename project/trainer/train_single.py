@@ -10,7 +10,7 @@ Comment:
 
 Have a good code time!
 -----
-Last Modified: Monday May 13th 2024 4:25:14 pm
+Last Modified: Sunday June 9th 2024 6:04:51 am
 Modified By: the developer formerly known as Kaixu Chen at <chenkaixusan@gmail.com>
 -----
 HISTORY:
@@ -44,7 +44,7 @@ from torchmetrics.classification import (
     MulticlassConfusionMatrix
 )
 
-from models.make_model import MakeVideoModule
+from project.models.make_model import MakeVideoModule
 
 class SingleModule(LightningModule):
     def __init__(self, hparams):

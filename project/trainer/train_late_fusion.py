@@ -10,7 +10,7 @@ Comment:
 
 Have a good code time :)
 -----
-Last Modified: Thursday May 16th 2024 7:41:45 am
+Last Modified: Sunday June 9th 2024 6:04:51 am
 Modified By: the developer formerly known as Kaixu Chen at <chenkaixusan@gmail.com>
 -----
 Copyright (c) 2024 The University of Tsukuba
@@ -21,10 +21,8 @@ Date      	By	Comments
 '''
 
 from typing import Any, List, Optional, Union
-from pytorch_lightning.utilities.types import STEP_OUTPUT
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 
 from pytorch_lightning import LightningModule
@@ -37,7 +35,7 @@ from torchmetrics.classification import (
     MulticlassConfusionMatrix
 )
 
-from models.make_model import MakeVideoModule
+from project.models.make_model import MakeVideoModule
 
 class LateFusionModule(LightningModule):
     def __init__(self, hparams):

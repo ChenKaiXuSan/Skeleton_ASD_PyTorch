@@ -15,11 +15,9 @@ HISTORY:
 Date 	By 	Comments
 ------------------------------------------------
 
+26-11-2024	Kaixu Chen	refactor the code
+
 '''
 
-import sys
-sys.path.append('/workspace/project/project/models')
-
-from make_model import *
-from optical_flow import *
-from resnet_attention_branch_network import *
+from project.models.make_model import *
+from project.models.optical_flow import *

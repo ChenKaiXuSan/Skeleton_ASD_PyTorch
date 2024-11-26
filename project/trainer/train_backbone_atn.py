@@ -5,12 +5,11 @@ Created Date: 2023-10-19 02:29:47
 Author: chenkaixu
 -----
 Comment:
- This file is the train/val/test process for the project.
- 
+Thie file is the train/val/test process for 3dcnn with attention branch network (ATN) for the project.
 
 Have a good code time!
 -----
-Last Modified: Wednesday July 17th 2024 7:38:38 am
+Last Modified: Tuesday November 26th 2024 6:37:15 am
 Modified By: the developer formerly known as Kaixu Chen at <chenkaixusan@gmail.com>
 -----
 HISTORY:
@@ -27,7 +26,7 @@ from typing import Any, List, Optional, Union
 
 import torch
 import torch.nn.functional as F
-
+from project.models.make_model import ATN3DCNN
 
 from pytorch_lightning import LightningModule
 
@@ -39,9 +38,8 @@ from torchmetrics.classification import (
     MulticlassConfusionMatrix
 )
 
-from project.models.make_model import MakeVideoModule
 
-class TemporalMixModule(LightningModule):
+class BackboneATNModule(LightningModule):
     def __init__(self, hparams):
         super().__init__()
 
@@ -51,7 +49,7 @@ class TemporalMixModule(LightningModule):
         self.num_classes = hparams.model.model_class_num
 
         # define model
-        self.video_cnn = MakeVideoModule(hparams)() 
+        self.video_cnn = ATN3DCNN(hparams)()
 
         # save the hyperparameters to the file and ckpt
         self.save_hyperparameters()
