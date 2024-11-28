@@ -29,9 +29,9 @@ model:
   model_depth: 50 # choices=[50, 101, 152], help='the depth of used model'
 
 YOLO:
-  pose_ckpt: "/workspace/skeleton/ckpt/yolov8x-pose.pt"
-  seg_ckpt: "/workspace/skeleton/ckpt/yolov8x-seg.pt"
-  bbox_ckpt: "/workspace/skeleton/ckpt/yolov8x.pt"
+  pose_ckpt: "ckpt/yolov8x-pose.pt"
+  seg_ckpt: "ckpt/yolov8x-seg.pt"
+  bbox_ckpt: "ckpt/yolov8x.pt"
   conf: 0.8
   iou: 0.5
   verbose: False
@@ -60,7 +60,7 @@ train:
   # Transfer_learning
   transfer_learning: True # if use the transformer learning
 
-  log_path: /workspace/skeleton/logs/${train.experiment}/${train.clip_duration}_${train.uniform_temporal_subsample_num}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  log_path: logs/${train.experiment}/${train.clip_duration}_${train.uniform_temporal_subsample_num}/${now:%Y-%m-%d}/${now:%H-%M-%S}
 
   fast_dev_run: False # if use the fast_dev_run
   fold: 3 # the fold number of the cross validation

@@ -89,34 +89,67 @@ class ATN3DCNN(nn.Module):
         self.model_depth = hparams.model.model_depth
         self.transfer_learning = hparams.train.transfer_learning
 
-    def initialize_walk_resnet(self, input_channel:int = 3) -> nn.Module:
-
-        if self.transfer_learning:
-            slow = torch.hub.load('facebookresearch/pytorchvideo', 'slow_r50', pretrained=True)
-            
-            # for the folw model and rgb model 
-            slow.blocks[0].conv = nn.Conv3d(input_channel, 64, kernel_size=(1, 7, 7), stride=(1, 2, 2), padding=(0, 3, 3), bias=False)
-            # change the knetics-400 output 400 to model class num
-            slow.blocks[-1].proj = nn.Linear(2048, self.model_class_num)
-
-        else:
-            slow = resnet.create_resnet(
-                input_channel=input_channel,
-                model_depth=self.model_depth,
-                model_num_class=self.model_class_num,
-                norm=nn.BatchNorm3d,
-                activation=nn.ReLU,
-            )
-
-        return slow
-
-    def __call__(self, *args: Any, **kwds: Any) -> Any:
-
-        if self.backbone == "resnet":
-            return self.initialize_walk_resnet()
+        if self.backbone == "3dcnn_atn":
+            self.stem, self.stage, self.head = self.load_resnet(input_channel=3, model_class_num=self.model_class_num)   
         else:
             raise KeyError(f"the model name {self.backbone} is not in the model zoo")
 
+        # make self layer 
+        self.relu = nn.ReLU(inplace=True)
+
+        self.bn_att = nn.BatchNorm3d(2048)
+        self.attn_conv = nn.Conv3d(2048, self.model_class_num, kernel_size=1, padding=0, bias=False)
+        self.bn_att2 = nn.BatchNorm3d(self.model_class_num)
+        self.attn_conv2 = nn.Conv3d(self.model_class_num, self.model_class_num, kernel_size=1, padding=0, bias=False)
+        self.attn_conv3 = nn.Conv3d(self.model_class_num, 1, kernel_size=1, padding=0, bias=False)
+        self.bn_att3 = nn.BatchNorm3d(1)
+        self.att_gap = nn.AdaptiveAvgPool3d((16))
+        self.sigmoid = nn.Sigmoid()
+
+        self.avgpool = nn.AdaptiveAvgPool3d((8))
+
+
+    @staticmethod
+    def load_resnet(input_channel:int = 3, model_class_num:int = 3) -> nn.Module:
+    
+        slow = torch.hub.load('facebookresearch/pytorchvideo', 'slow_r50', pretrained=True)
+        
+        # for the folw model and rgb model 
+        slow.blocks[0].conv = nn.Conv3d(input_channel, 64, kernel_size=(1, 7, 7), stride=(1, 2, 2), padding=(0, 3, 3), bias=False)
+        # change the knetics-400 output 400 to model class num
+        slow.blocks[-1].proj = nn.Linear(2048, model_class_num)
+
+        stem = slow.blocks[0]
+        stage = slow.blocks[1:5]
+        head = slow.blocks[-1]
+
+        return stem, stage, head
+
+    def forward(self, x):
+
+        b, c, t, h, w = x.size()
+        x = self.stem(x) # b, 64, 8, 56, 56
+        for resstage in self.stage:
+            x = resstage(x) # output: b, 2048, 8, 7, 7
+
+        ax = self.bn_att(x)
+        ax = self.relu(self.bn_att2(self.attn_conv(ax)))
+        axb, axc, axt, axh, axw = ax.size()
+        self.att = self.sigmoid(self.bn_att3(self.attn_conv3(ax)))
+
+        # TODO：这里的形状需要修改一下
+        ax = self.attn_conv2(ax)
+        ax = self.att_gap(ax)
+        ax = ax.view(ax.size(0), -1)
+
+        rx = x * self.att
+        rx = rx + x 
+        rx = self.avgpool(rx)
+
+        rx = self.head(rx)
+
+        return ax, rx, self.att
+    
 
 
 class MakeImageModule(nn.Module):

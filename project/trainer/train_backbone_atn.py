@@ -48,8 +48,8 @@ class BackboneATNModule(LightningModule):
 
         self.num_classes = hparams.model.model_class_num
 
-        # define model
-        self.video_cnn = ATN3DCNN(hparams)()
+        # define 3dcnn with ATN
+        self.resnet_atn = ATN3DCNN(hparams)
 
         # save the hyperparameters to the file and ckpt
         self.save_hyperparameters()
@@ -61,7 +61,7 @@ class BackboneATNModule(LightningModule):
         self._confusion_matrix = MulticlassConfusionMatrix(num_classes=self.num_classes)
 
     def forward(self, x):
-        return self.video_cnn(x)
+        return self.resnet_atn(x)
 
     def training_step(self, batch: torch.Tensor, batch_idx: int):
         
@@ -72,7 +72,7 @@ class BackboneATNModule(LightningModule):
 
         b, c, t, h, w = video.shape
 
-        video_preds = self.video_cnn(video)
+        video_preds = self.resnet_atn(video)
         video_preds_softmax = torch.softmax(video_preds, dim=1)
 
         # check shape 
@@ -113,7 +113,7 @@ class BackboneATNModule(LightningModule):
 
         b, c, t, h, w = video.shape
 
-        video_preds = self.video_cnn(video)
+        video_preds = self.resnet_atn(video)
         video_preds_softmax = torch.softmax(video_preds, dim=1)
 
         if b == 1:
@@ -153,7 +153,7 @@ class BackboneATNModule(LightningModule):
 
         b, c, t, h, w = video.shape
 
-        video_preds = self.video_cnn(video)
+        video_preds = self.resnet_atn(video)
         video_preds_softmax = torch.softmax(video_preds, dim=1)
 
         if b == 1:
