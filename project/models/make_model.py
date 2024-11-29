@@ -103,7 +103,7 @@ class ATN3DCNN(nn.Module):
         self.attn_conv2 = nn.Conv3d(self.model_class_num, self.model_class_num, kernel_size=1, padding=0, bias=False)
         self.attn_conv3 = nn.Conv3d(self.model_class_num, 1, kernel_size=1, padding=0, bias=False)
         self.bn_att3 = nn.BatchNorm3d(1)
-        self.att_gap = nn.AdaptiveAvgPool3d((16))
+        self.att_gap = nn.AdaptiveAvgPool3d((16)) # copy from the original code
         self.sigmoid = nn.Sigmoid()
 
         self.avgpool = nn.AdaptiveAvgPool3d((8))
@@ -135,16 +135,15 @@ class ATN3DCNN(nn.Module):
         ax = self.bn_att(x)
         ax = self.relu(self.bn_att2(self.attn_conv(ax)))
         axb, axc, axt, axh, axw = ax.size()
-        self.att = self.sigmoid(self.bn_att3(self.attn_conv3(ax)))
+        self.att = self.sigmoid(self.bn_att3(self.attn_conv3(ax))) # b, 1, 8, 7, 7
 
-        # TODO：这里的形状需要修改一下
         ax = self.attn_conv2(ax)
-        ax = self.att_gap(ax)
+        ax = self.att_gap(ax) 
         ax = ax.view(ax.size(0), -1)
 
         rx = x * self.att
         rx = rx + x 
-        rx = self.avgpool(rx)
+        # rx = self.avgpool(rx) # ? I think this is not necessary
 
         rx = self.head(rx)
 

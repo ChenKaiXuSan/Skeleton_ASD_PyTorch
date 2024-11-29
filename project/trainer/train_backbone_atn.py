@@ -23,6 +23,7 @@ Date 	By 	Comments
 '''
 
 from typing import Any, List, Optional, Union
+import logging
 
 import torch
 import torch.nn.functional as F
@@ -72,25 +73,26 @@ class BackboneATNModule(LightningModule):
 
         b, c, t, h, w = video.shape
 
-        video_preds = self.resnet_atn(video)
-        video_preds_softmax = torch.softmax(video_preds, dim=1)
+        att_opt, per_opt, _ = self.resnet_atn(video)
 
         # check shape 
         if b == 1:
             label = label.unsqueeze(0)
-            
-        assert label.shape[0] == video_preds.shape[0]
+        assert label.shape[0] == b
 
-        loss = F.cross_entropy(video_preds, label.long())
+        # compute output 
+        att_loss = F.cross_entropy(att_opt, label.long())
+        per_loss = F.cross_entropy(per_opt, label.long())
+        loss = att_loss + per_loss
 
         self.log("train/loss", loss, on_epoch=True, on_step=True, batch_size=b)
 
         # log metrics
-        video_acc = self._accuracy(video_preds_softmax, label)
-        video_precision = self._precision(video_preds_softmax, label)
-        video_recall = self._recall(video_preds_softmax, label)
-        video_f1_score = self._f1_score(video_preds_softmax, label)
-        video_confusion_matrix = self._confusion_matrix(video_preds_softmax, label)
+        video_acc = self._accuracy(per_opt, label)
+        video_precision = self._precision(per_opt, label)
+        video_recall = self._recall(per_opt, label)
+        video_f1_score = self._f1_score(per_opt, label)
+        video_confusion_matrix = self._confusion_matrix(per_opt, label)
 
         self.log_dict(
             {
@@ -101,7 +103,7 @@ class BackboneATNModule(LightningModule):
             }, 
             on_epoch=True, on_step=True, batch_size=b
         )
-        print("train loss: ", loss.item())
+        logging.info(f"train loss: {loss.item()}")
         return loss
 
 
@@ -113,25 +115,26 @@ class BackboneATNModule(LightningModule):
 
         b, c, t, h, w = video.shape
 
-        video_preds = self.resnet_atn(video)
-        video_preds_softmax = torch.softmax(video_preds, dim=1)
-
-        if b == 1:
-            label = label.unsqueeze(0)
+        att_opt, per_opt, _ = self.resnet_atn(video)
 
         # check shape 
+        if b == 1:
+            label = label.unsqueeze(0)
         assert label.shape[0] == b
 
-        loss = F.cross_entropy(video_preds, label.long())
+        # compute output 
+        att_loss = F.cross_entropy(att_opt, label.long())
+        per_loss = F.cross_entropy(per_opt, label.long())
+        loss = att_loss + per_loss
 
         self.log("val/loss", loss, on_epoch=True, on_step=True, batch_size=b)
 
         # log metrics
-        video_acc = self._accuracy(video_preds_softmax, label)
-        video_precision = self._precision(video_preds_softmax, label)
-        video_recall = self._recall(video_preds_softmax, label)
-        video_f1_score = self._f1_score(video_preds_softmax, label)
-        video_confusion_matrix = self._confusion_matrix(video_preds_softmax, label)
+        video_acc = self._accuracy(per_opt, label)
+        video_precision = self._precision(per_opt, label)
+        video_recall = self._recall(per_opt, label)
+        video_f1_score = self._f1_score(per_opt, label)
+        video_confusion_matrix = self._confusion_matrix(per_opt, label)
         
         self.log_dict(
             {
@@ -143,7 +146,7 @@ class BackboneATNModule(LightningModule):
             on_epoch=True, on_step=True, batch_size=b
         )
 
-        print("val loss: ", loss.item())
+        logging.info(f"val loss: {loss.item()}")
 
     def test_step(self, batch: torch.Tensor, batch_idx: int):
 
@@ -153,43 +156,40 @@ class BackboneATNModule(LightningModule):
 
         b, c, t, h, w = video.shape
 
-        video_preds = self.resnet_atn(video)
-        video_preds_softmax = torch.softmax(video_preds, dim=1)
-
-        if b == 1:
-            label = label.unsqueeze(0)
+        att_opt, per_opt, _ = self.resnet_atn(video)
 
         # check shape 
+        if b == 1:
+            label = label.unsqueeze(0)
         assert label.shape[0] == b
 
-        loss = F.cross_entropy(video_preds, label.long())
+        # compute output 
+        att_loss = F.cross_entropy(att_opt, label.long())
+        per_loss = F.cross_entropy(per_opt, label.long())
+        loss = att_loss + per_loss
 
-        self.log("test/loss", loss, on_epoch=True, on_step=True, batch_size=b)
+        self.log("val/loss", loss, on_epoch=True, on_step=True, batch_size=b)
 
         # log metrics
-        video_acc = self._accuracy(video_preds_softmax, label)
-        video_precision = self._precision(video_preds_softmax, label)
-        video_recall = self._recall(video_preds_softmax, label)
-        video_f1_score = self._f1_score(video_preds_softmax, label)
-        video_confusion_matrix = self._confusion_matrix(video_preds_softmax, label)
+        video_acc = self._accuracy(per_opt, label)
+        video_precision = self._precision(per_opt, label)
+        video_recall = self._recall(per_opt, label)
+        video_f1_score = self._f1_score(per_opt, label)
+        video_confusion_matrix = self._confusion_matrix(per_opt, label)
         
-        self.log_dict(
-            {
+        metric_dict = {
                 "test/video_acc": video_acc,
                 "test/video_precision": video_precision,
                 "test/video_recall": video_recall,
                 "test/video_f1_score": video_f1_score,
-            },
+
+        }
+        self.log_dict(
+            metric_dict,
             on_epoch=True, on_step=True, batch_size=b
         )
 
-        return {
-            "video_acc": video_acc,
-            "video_precision": video_precision,
-            "video_recall": video_recall,
-            "video_f1_score": video_f1_score,
-            "video_confusion_matrix": video_confusion_matrix,
-        }
+        return metric_dict
 
     def configure_optimizers(self):
         """

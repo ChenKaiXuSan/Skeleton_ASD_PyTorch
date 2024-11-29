@@ -97,13 +97,13 @@ def train(hparams: DictConfig, dataset_idx, fold: int):
             raise ValueError(f"the {hparams.train.experiment} is not supported.")
     elif hparams.train.backbone == "3dcnn_atn":
         classification_module = BackboneATNModule(hparams)
-
+    # * compare experiment
     elif hparams.train.backbone == "two_stream":
         classification_module = TwoStreamModule(hparams)
-
+    # * compare experiment
     elif hparams.train.backbone == "cnn_lstm":
         classification_module = CNNLstmModule(hparams)
-
+    # * compare experiment
     elif hparams.train.backbone == "2dcnn":
         classification_module = CNNModule(hparams)
 
