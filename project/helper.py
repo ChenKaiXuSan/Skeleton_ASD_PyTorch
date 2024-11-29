@@ -496,6 +496,18 @@ def save_CAM(
     i,
     random_index,
 ):
+    """_summary_
+
+    Args:
+        config (_type_): _description_
+        model (torch.nn.Module): _description_
+        input_tensor (torch.Tensor): _description_
+        inp_label (_type_): _description_
+        fold (_type_): _description_
+        flag (_type_): _description_
+        i (_type_): _description_
+        random_index (_type_): _description_
+    """    
     # FIXME: 由于backbone的不同，需要修改target_layer的位置。
     # guided grad cam method
     target_layer = [model.blocks[-2].res_blocks[-1]]

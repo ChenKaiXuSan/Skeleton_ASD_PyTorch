@@ -39,6 +39,8 @@ from torchmetrics.classification import (
     MulticlassConfusionMatrix
 )
 
+from project.helper import save_CAM, save_CM
+
 
 class BackboneATNModule(LightningModule):
     def __init__(self, hparams):
@@ -52,7 +54,6 @@ class BackboneATNModule(LightningModule):
         # define 3dcnn with ATN
         self.resnet_atn = ATN3DCNN(hparams)
 
-        # save the hyperparameters to the file and ckpt
         self.save_hyperparameters()
 
         self._accuracy = MulticlassAccuracy(num_classes=self.num_classes)
@@ -151,6 +152,26 @@ class BackboneATNModule(LightningModule):
         # save attention map
         # TODO: here should save attention map from model
 
+    ##############
+    # test step
+    ##############
+    # the order of the hook function is:
+    # on_test_start -> test_step -> on_test_batch_end -> on_test_epoch_end -> on_test_end
+
+    def on_test_start(self) -> None:
+        """hook function for test start
+        """        
+        self.test_outputs = []
+        self.test_pred_list = []
+        self.test_label_list = []
+
+        logging.info("test start")
+
+    def on_test_end(self) -> None:
+        """hook function for test end
+        """        
+        logging.info("test end")
+    
     def test_step(self, batch: dict[str, torch.Tensor], batch_idx: int):
 
         # input and model define
@@ -159,7 +180,7 @@ class BackboneATNModule(LightningModule):
 
         b, c, t, h, w = video.shape
 
-        att_opt, per_opt, _ = self.resnet_atn(video)
+        att_opt, per_opt, attention = self.resnet_atn(video)
 
         # check shape 
         if b == 1:
@@ -192,7 +213,36 @@ class BackboneATNModule(LightningModule):
             on_epoch=True, on_step=True, batch_size=b
         )
 
-        return metric_dict
+        return att_opt, per_opt, attention
+    
+    def on_test_batch_end(self, outputs: list[torch.Tensor], batch: Any, batch_idx: int, dataloader_idx: int = 0) -> None:
+        """hook function for test batch end
+
+        Args:
+            outputs (torch.Tensor | logging.Mapping[str, Any] | None): current output from batch.
+            batch (Any): the data of current batch.
+            batch_idx (int): the index of current batch.
+            dataloader_idx (int, optional): the index of all dataloader. Defaults to 0.
+        """        
+
+
+        att_opt, per_opt, attention = outputs
+        label = batch["label"].detach().float().squeeze()
+
+        self.test_outputs.append(outputs)
+        self.test_pred_list.append(per_opt)
+        self.test_label_list.append(label)
+    
+    def on_test_epoch_end(self) -> None:
+        """hook function for test epoch end
+        """        
+        # save confusion matrix
+        save_CM(self.test_pred_list, self.test_label_list, self.num_classes)
+
+        # save CAM
+        # save_CAM(self.test_pred_list, self.test_label_list, self.num_classes)
+
+        logging.info("test epoch end")
 
     def configure_optimizers(self):
         """
