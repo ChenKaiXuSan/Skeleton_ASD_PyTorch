@@ -30,12 +30,10 @@ Date      	By	Comments
 14-05-2024	Kaixu Chen	add save_CAM method, now it can save the CAM for the model evaluation.
 """
 
-import os, logging
+import logging
 from pathlib import Path
-from typing import Any
 import matplotlib.pyplot as plt
 import seaborn as sns
-import numpy as np
 import random
 import torch
 
@@ -49,16 +47,8 @@ from torchmetrics.classification import (
 )
 
 from pytorch_grad_cam import (
-    GradCAM,
-    HiResCAM,
-    FullGrad,
-    GradCAMPlusPlus,
-    AblationCAM,
-    ScoreCAM,
-    LayerCAM,
+    GradCAMPlusPlus
 )
-from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
-from pytorch_grad_cam.utils.image import show_cam_on_image
 from captum.attr import visualization as viz
 
 
@@ -72,6 +62,8 @@ def save_helper(config, model, dataloader, fold):
         total_pred, total_label = save_inference_two_stream(
             config, model, dataloader, fold
         )
+    elif "3dcnn_atn" in config.train.experiment:
+        total_pred, total_label = save_inference_atn(config, model, dataloader, fold)
     else:
         total_pred, total_label = save_inference(config, model, dataloader, fold)
 
@@ -245,6 +237,76 @@ def save_inference_late_fusion(config, model, dataloader, fold):
 
     return pred, label
 
+def save_inference_atn(config, model, dataloader, fold):
+
+    total_pred_list = []
+    total_label_list = []
+
+    test_dataloader = dataloader.test_dataloader()
+
+    for i, batch in enumerate(test_dataloader):
+
+        # input and label
+        video = (
+            batch["video"].detach().to(f"cuda:{config.train.gpu_num}")
+        )  # b, c, t, h, w
+        label = (
+            batch["label"].detach().to(f"cuda:{config.train.gpu_num}")
+        )  # b, class_num    
+
+        model.eval().to(f"cuda:{config.train.gpu_num}")
+
+        # pred the video frames
+        with torch.no_grad():
+            att_opt, per_opt, att_map = model(video)
+
+        # when torch.size([1]), not squeeze.
+        if per_opt.size()[0] != 1 or len(per_opt.size()) != 1:
+            per_opt = per_opt.squeeze(dim=-1)
+
+        # random_index = random.sample(range(0, video.size()[0]), 2)
+        # save_CAM(
+        #     config,
+        #     model.video_cnn,
+        #     video,
+        #     label,
+        #     fold,
+        #     config.train.experiment,
+        #     i,
+        #     random_index,
+        # )
+
+        for i in per_opt.tolist():
+            total_pred_list.append(i)
+        for i in label.tolist():
+            total_label_list.append(i)
+
+    pred = torch.tensor(total_pred_list)
+    label = torch.tensor(total_label_list)
+
+    # save the results
+    save_path = Path(config.train.log_path) / "best_preds"
+
+    if save_path.exists() is False:
+        save_path.mkdir(parents=True)
+
+    torch.save(
+        pred,
+        save_path / f"{config.model.model}_{config.data.sampling}_{fold}_pred.pt",
+    )
+    torch.save(
+        label,
+        save_path / f"{config.model.model}_{config.data.sampling}_{fold}_label.pt",
+    )
+
+    logging.info(
+        f"save the pred and label into {save_path} / {config.model.model}_{config.data.sampling}_{fold}"
+    )
+
+    # save attention map from model 
+
+
+    return pred, label
 
 def save_inference(config, model, dataloader, fold):
 
@@ -262,6 +324,7 @@ def save_inference(config, model, dataloader, fold):
         label = (
             batch["label"].detach().to(f"cuda:{config.train.gpu_num}")
         )  # b, class_num
+
         if "cnn_lstm" in config.train.experiment:
             label = label.repeat_interleave(video.size()[2])
         

@@ -64,7 +64,7 @@ class BackboneATNModule(LightningModule):
     def forward(self, x):
         return self.resnet_atn(x)
 
-    def training_step(self, batch: torch.Tensor, batch_idx: int):
+    def training_step(self, batch: dict[str, torch.Tensor], batch_idx: int):
         
         # prepare the input and label
         video = batch["video"].detach()  # b, c, t, h, w
@@ -107,7 +107,7 @@ class BackboneATNModule(LightningModule):
         return loss
 
 
-    def validation_step(self, batch: torch.Tensor, batch_idx: int):
+    def validation_step(self, batch: dict[str, torch.Tensor], batch_idx: int):
 
         # input and model define
         video = batch["video"].detach()  # b, c, t, h, w
@@ -115,7 +115,7 @@ class BackboneATNModule(LightningModule):
 
         b, c, t, h, w = video.shape
 
-        att_opt, per_opt, _ = self.resnet_atn(video)
+        att_opt, per_opt, attention = self.resnet_atn(video)
 
         # check shape 
         if b == 1:
@@ -148,7 +148,10 @@ class BackboneATNModule(LightningModule):
 
         logging.info(f"val loss: {loss.item()}")
 
-    def test_step(self, batch: torch.Tensor, batch_idx: int):
+        # save attention map
+        # TODO: here should save attention map from model
+
+    def test_step(self, batch: dict[str, torch.Tensor], batch_idx: int):
 
         # input and model define
         video = batch["video"].detach()  # b, c, t, h, w

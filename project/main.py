@@ -32,12 +32,13 @@ Date 	By 	Comments
 
 """
 
-import os, logging
+import os
+import logging
+import hydra
+from omegaconf import DictConfig
 
 from pytorch_lightning import Trainer, seed_everything
 from pytorch_lightning.loggers import TensorBoardLogger
-
-# callbacks
 from pytorch_lightning.callbacks import (
     TQDMProgressBar,
     RichModelSummary,
@@ -48,9 +49,9 @@ from pytorch_lightning.callbacks import (
 
 from project.dataloader.data_loader import WalkDataModule
 
-#############################
-# select different experiment
-#############################
+#####################################
+# select different experiment trainer 
+#####################################
 
 # 3D CNN model
 from project.trainer.train_single import SingleModule
@@ -60,11 +61,9 @@ from project.trainer.train_temporal_mix import TemporalMixModule
 from project.trainer.train_two_stream import TwoStreamModule
 from project.trainer.train_cnn_lstm import CNNLstmModule
 from project.trainer.train_cnn import CNNModule
-# ATN 
+# Attention Branch Network
 from project.trainer.train_backbone_atn import BackboneATNModule
 
-import hydra
-from omegaconf import DictConfig
 
 from project.cross_validation import DefineCrossValidation
 from project.helper import save_helper
@@ -170,15 +169,19 @@ def train(hparams: DictConfig, dataset_idx, fold: int):
         ckpt_path="best",
     )
 
-    # save_helper(hparams, classification_module, data_module, fold) #! debug only
-    save_helper(
-        hparams,
-        classification_module.load_from_checkpoint(
-            trainer.checkpoint_callback.best_model_path
-        ),
-        data_module,
-        fold,
-    )
+    # TODO: the save helper for 3dnn_atn not implemented yet.
+    if hparams.train.backbone == "3dcnn_atn":
+        pass
+    else:
+        # save_helper(hparams, classification_module, data_module, fold) #! debug only
+        save_helper(
+            hparams,
+            classification_module.load_from_checkpoint(
+                trainer.checkpoint_callback.best_model_path
+            ),
+            data_module,
+            fold,
+        )
 
 
 @hydra.main(
