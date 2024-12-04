@@ -129,3 +129,17 @@ docker exec -it container_name bash
   keywords={Legged locomotion;Feature extraction;Accuracy;Human activity recognition;Reviews;Face recognition;Diseases;Deep learning;Cameras;Surgery;Deep learning;Medical services;Adult spinal deformity;deep learning;human action recognition;healthcare;gait posture;periodic motion;motion symmetry},
   doi={10.1109/ACCESS.2024.3479165}}
 ```
+
+The first version of this research project is available on [Frontiners in Neuroscience](https://www.frontiersin.org/journals/neuroscience/articles/10.3389/fnins.2023.1278584/full).
+
+```
+@article{chen2023two,
+  title={Two-stage video-based convolutional neural networks for adult spinal deformity classification},
+  author={Chen, Kaixu and Asada, Tomoyuki and Ienaga, Naoto and Miura, Kousei and Sakashita, Kotaro and Sunami, Takahiro and Kadone, Hideki and Yamazaki, Masashi and Kuroda, Yoshihiro},
+  journal={Frontiers in Neuroscience},
+  volume={17},
+  pages={1278584},
+  year={2023},
+  publisher={Frontiers Media SA}
+}
+```
