@@ -24,14 +24,13 @@ Date      	By	Comments
 """
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 
 from torchvision.io import write_video
 from torchvision.utils import save_image, flow_to_image
 
-from models.make_model import MakeOriginalTwoStream
-from models.optical_flow import Optical_flow
+from project.models.make_model import MakeOriginalTwoStream
+from project.models.optical_flow import Optical_flow
 
 from pytorch_lightning import LightningModule
 

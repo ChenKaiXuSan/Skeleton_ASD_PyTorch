@@ -47,7 +47,7 @@ from torch.utils.data import DataLoader
 from pytorchvideo.data import make_clip_sampler
 from pytorchvideo.data.labeled_video_dataset import labeled_video_dataset
 
-from gait_video_dataset import labeled_gait_video_dataset
+from project.dataloader.gait_video_dataset import labeled_gait_video_dataset
 
 disease_to_num_mapping_Dict: Dict = {
     2: {"ASD": 0, "non-ASD": 1},

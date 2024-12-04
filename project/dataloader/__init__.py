@@ -9,17 +9,16 @@ Comment:
  
 Have a good code time!
 -----
-Last Modified: Saturday April 6th 2024 8:08:31 am
+Last Modified: Wednesday November 13th 2024 4:46:21 am
 Modified By: the developer formerly known as Kaixu Chen at <chenkaixusan@gmail.com>
 -----
 HISTORY:
 Date 	By 	Comments
 ------------------------------------------------
 
+26-11-2024	Kaixu Chen	refactor the code
+
 '''
 
-import sys
-sys.path.append('/workspace/project/project/dataloader')
-
-from data_loader import *
-from gait_video_dataset import *
+from project.dataloader.data_loader import *
+from project.dataloader.gait_video_dataset import *

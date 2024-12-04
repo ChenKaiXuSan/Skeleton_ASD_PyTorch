@@ -287,5 +287,26 @@
         "data.gait_cycle_batch_size=1",
       ]
     },
+    {
+      "name": "phasemix_resnet_atn_none",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "project.main",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "args": [
+        "train.fast_dev_run=false",
+        "train.gpu_num=1",
+        "train.backbone=3dcnn_atn",
+        "data.num_workers=0",
+        "model.model_class_num=3",
+        "train.temporal_mix=true",
+        "train.periodicity_symmetric=none",
+        "train.clip_duration=1",
+        "train.uniform_temporal_subsample_num=8",
+        "data.gait_cycle_batch_size=1",
+      ]
+    },
   ]
 }

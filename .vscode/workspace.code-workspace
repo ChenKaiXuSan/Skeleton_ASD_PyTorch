@@ -7,7 +7,10 @@
 		{
 			"name": "data",
 			"path": "/workspace/data"
-		}
-
+		},
+		{
+			"name": "attention_branch_network",
+			"path": "../../attention_branch_network"
+		},
 	]
 }

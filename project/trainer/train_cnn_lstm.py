@@ -7,8 +7,7 @@ Created Date: Friday June 7th 2024
 Author: Kaixu Chen
 -----
 Comment:
-This file implements the training process for two stream method.
-In this two streams are trained separately and then the results of two streams are fused to get the final result.
+This file implements the training process for cnn lstm method.
 Here, saving the results and calculating the metrics are done in separate functions.
 
 Have a good code time :)
@@ -24,15 +23,13 @@ Date      	By	Comments
 """
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from pytorch_lightning import LightningModule
 
 from torchvision.io import write_video
 from torchvision.utils import save_image, flow_to_image
 
-from models.make_model import CNNLSTM
-
-from pytorch_lightning import LightningModule
+from project.models.make_model import CNNLSTM
 
 from torchmetrics.classification import (
     MulticlassAccuracy,
