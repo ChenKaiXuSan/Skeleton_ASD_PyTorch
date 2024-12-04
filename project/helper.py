@@ -389,21 +389,24 @@ def save_inference(config, model, dataloader, fold):
     return pred, label
 
 
-def save_metrics(all_pred, all_label, fold, config):
-    """save the final metrics into the log file, cross whole pred and label.
+def save_metrics(all_pred, all_label, fold: str, save_path: str, num_class: int):
+    """save the metrics to file.
 
     Args:
-        all_pred (torch.tensor): all the prediction of the model.
-        all_label (torch.tensor): all the label of the model.
-        fold (int): the fold number.
-        config (hydra): the config file.
-    """
+        all_pred (_type_): all the predict result.
+        all_label (_type_): all the label result.
+        fold (str): the fold number.
+        save_path (str): the path to save the metrics.
+        num_class (int): number of class.
+    """    
 
-    save_path = Path(config.train.log_path) / "metrics.txt"
+    save_path = Path(save_path) / "metrics.txt"
+    all_pred = torch.tensor(all_pred)
+    all_label = torch.tensor(all_label)
 
     # define metrics
     # num_class = torch.unique(all_label).size(0)
-    num_class = config.model.model_class_num
+    num_class = num_class
     _accuracy = MulticlassAccuracy(num_class)
     _precision = MulticlassPrecision(num_class)
     _recall = MulticlassRecall(num_class)
@@ -432,24 +435,27 @@ def save_metrics(all_pred, all_label, fold, config):
         f.writelines("\n")
 
 
-def save_CM(all_pred, all_label, fold, config):
-    """save the confusion matrix into file.
+def save_CM(all_pred: list, all_label: list, save_path: str, num_class: int, fold: str):
+    """save the confusion matrix to file.
 
     Args:
-        all_pred (torch.tensor): all the prediction of the model.
-        all_label (torch.tensor): all the label of the model.
-        fold (int): the fold number.
-        config (hydra): the config file.
-    """
+        all_pred (list): predict result.
+        all_label (list): label result.
+        save_path (Path): the path to save the confusion matrix.
+        num_class (int): the number of class.
+        fold (str): the fold number.
+    """    
 
-    save_path = Path(config.train.log_path) / "CM"
+    save_path = Path(save_path) / "CM"
+    all_pred = torch.Tensor(all_pred)
+    all_label = torch.Tensor(all_label)
 
     if save_path.exists() is False:
         save_path.mkdir(parents=True)
 
     # define metrics
     # num_class = torch.unique(all_label).size(0)
-    num_class = config.model.model_class_num
+    num_class = num_class
     _confusion_matrix = MulticlassConfusionMatrix(num_class, normalize="true")
 
     logging.info("_confusion_matrix: %s" % _confusion_matrix(all_pred, all_label))

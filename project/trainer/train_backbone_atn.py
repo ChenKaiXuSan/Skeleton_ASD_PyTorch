@@ -39,7 +39,7 @@ from torchmetrics.classification import (
 )
 
 from project.models.make_model import ATN3DCNN
-from project.helper import save_CAM, save_CM
+from project.helper import save_CAM, save_CM, save_metrics
 
 
 class BackboneATNModule(LightningModule):
@@ -232,14 +232,19 @@ class BackboneATNModule(LightningModule):
         label = batch["label"].detach().float().squeeze()
 
         self.test_outputs.append(outputs)
-        self.test_pred_list.append(per_opt)
-        self.test_label_list.append(label)
+        # tensor to list
+        for i in per_opt.tolist():
+            self.test_pred_list.append(i)
+        for i in label.tolist():
+            self.test_label_list.append(i)
 
     def on_test_epoch_end(self) -> None:
         """hook function for test epoch end"""
+
+        # save metrics
+        save_metrics(self.test_pred_list, self.test_label_list, fold=self.logger.name, save_path=self.hparams.hparams.train.log_path, num_class=self.num_classes)
         # save confusion matrix
-        # TODO: 这里需要改一下save_CM的参数
-        save_CM(self.test_pred_list, self.test_label_list, self.num_classes)
+        save_CM(self.test_pred_list, self.test_label_list, save_path=self.hparams.hparams.train.log_path, num_class=self.num_classes, fold=self.logger.name)
 
         # save CAM
         # save_CAM(self.test_pred_list, self.test_label_list, self.num_classes)
