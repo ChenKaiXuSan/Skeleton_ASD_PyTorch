@@ -19,7 +19,7 @@ F --> G[final result]
 ## Description
 
 We present a method that can effectively capture **motion periodicity** and **action symmetry** information in motion and exploit the characteristics of gait motion.
-Our experiments, performed on a video dataset consisting of 81 different patients, showed that our method outperformed baseline approaches. 
+Our experiments, performed on a video dataset consisting of 81 different patients, showed that our method outperformed baseline approaches.
 The proposed method achieved an accuracy of 71.43, a precision of 72.80, and an F1 score of 71.15.
 
 The contributions of this study are as follows:
@@ -47,22 +47,26 @@ After that, we can define the gait cycle based on them.
 You can find the code in the `./prepare_gait_cycle_index` folder.
 
 We compare the results of the proposed method with the results of some human action recognition models.
-1. CNN 
-2. CNN LSTM 
+
+1. CNN
+2. CNN LSTM
 3. Two-stream CNN
 4. Skeleton-based model (STGCN)
-5. 3D CNN 
+5. 3D CNN
 
-## Abliation Study 
+## Abliation Study
 
 We prepared two different ablation experiments as follows.
+
 1. first ablation study
+
 - We removed the periodic motion fusion module and compared the results.
 - We removed the symmetry feature fusion module and compared the results.
 
 2. second ablation study
-We use same backbone architecture with different training strategy.
-Like:
+   We use same backbone architecture with different training strategy.
+   Like:
+
 - early fusion
 - late fusion
 - random
@@ -71,13 +75,13 @@ Like:
 
 1. install dependencies
 
-``` bash
-# clone project   
+```bash
+# clone project
 git clone https://github.com/ChenKaiXuSan/Skeleton_ASD_PyTorch.git
 
-# install project   
-cd Skeleton_ASD_PyTorch/ 
-pip install -e .   
+# install project
+cd Skeleton_ASD_PyTorch/
+pip install -e .
 pip install -r requirements.txt
 ```
 
@@ -87,41 +91,39 @@ pip install -r requirements.txt
 # module folder
 cd Skeleton_ASD_PyTorch/
 
-# run module 
-python project/main.py [option] > logs/output_log/xxx.log 
+# run module
+python project/main.py [option] > logs/output_log/xxx.log
 ```
 
-## Docker  
+## Docker
 
 We recommend using docker to build the training environment.
 
 1. pull the official docker image, where release in the [pytorchlightning/pytorch_lightning](https://hub.docker.com/r/pytorchlightning/pytorch_lightning)
 
-``` bash  
+```bash
 docker pull pytorchlightning/pytorch_lightning
 ```
 
 2. create container.
 
-``` bach  
-docker run -itd -v $(pwd)/path:/path --gpus all --name container_name --shm-size 32g --ipc="host" <images:latest> bash 
-
+```bach
+docker run -itd -v $(pwd)/path:/path --gpus all --name container_name --shm-size 32g --ipc="host" <images:latest> bash
 ```
 
 3. enter the container and run the code.
 
-``` bash  
+```bash
 docker exec -it container_name bash
 ```
-
 
 ## Citation
 
 ```
 @ARTICLE{10714330,
   author={Chen, Kaixu and Xu, Jiayi and Asada, Tomoyuki and Miura, Kousei and Sakashita, Kotaro and Sunami, Takahiro and Kadone, Hideki and Yamazaki, Masashi and Ienaga, Naoto and Kuroda, Yoshihiro},
-  journal={IEEE Access}, 
-  title={PhaseMix: A Periodic Motion Fusion Method for Adult Spinal Deformity Classification}, 
+  journal={IEEE Access},
+  title={PhaseMix: A Periodic Motion Fusion Method for Adult Spinal Deformity Classification},
   year={2024},
   volume={12},
   number={},
