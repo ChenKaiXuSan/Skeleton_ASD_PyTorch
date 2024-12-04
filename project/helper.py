@@ -27,10 +27,13 @@ HISTORY:
 Date      	By	Comments
 ----------	---	---------------------------------------------------------
 
+04-12-2024	Kaixu Chen	refactor the code, add the save_inference method.
+
 14-05-2024	Kaixu Chen	add save_CAM method, now it can save the CAM for the model evaluation.
 """
 
 import logging
+import warnings
 from pathlib import Path
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -51,7 +54,7 @@ from pytorch_grad_cam import (
 )
 from captum.attr import visualization as viz
 
-
+@warnings.deprecated('not used')
 def save_helper(config, model, dataloader, fold):
 
     if "late_fusion" in config.train.experiment:
@@ -70,7 +73,7 @@ def save_helper(config, model, dataloader, fold):
     save_metrics(total_pred, total_label, fold, config)
     save_CM(total_pred, total_label, fold, config)
 
-
+@warnings.deprecated('not used')
 def save_inference_two_stream(config, model, dataloader, fold):
 
     total_pred_list = []
@@ -153,7 +156,7 @@ def save_inference_two_stream(config, model, dataloader, fold):
 
     return pred, label
 
-
+@warnings.deprecated('not used')
 def save_inference_late_fusion(config, model, dataloader, fold):
 
     total_pred_list = []
@@ -237,77 +240,7 @@ def save_inference_late_fusion(config, model, dataloader, fold):
 
     return pred, label
 
-def save_inference_atn(config, model, dataloader, fold):
-
-    total_pred_list = []
-    total_label_list = []
-
-    test_dataloader = dataloader.test_dataloader()
-
-    for i, batch in enumerate(test_dataloader):
-
-        # input and label
-        video = (
-            batch["video"].detach().to(f"cuda:{config.train.gpu_num}")
-        )  # b, c, t, h, w
-        label = (
-            batch["label"].detach().to(f"cuda:{config.train.gpu_num}")
-        )  # b, class_num    
-
-        model.eval().to(f"cuda:{config.train.gpu_num}")
-
-        # pred the video frames
-        with torch.no_grad():
-            att_opt, per_opt, att_map = model(video)
-
-        # when torch.size([1]), not squeeze.
-        if per_opt.size()[0] != 1 or len(per_opt.size()) != 1:
-            per_opt = per_opt.squeeze(dim=-1)
-
-        # random_index = random.sample(range(0, video.size()[0]), 2)
-        # save_CAM(
-        #     config,
-        #     model.video_cnn,
-        #     video,
-        #     label,
-        #     fold,
-        #     config.train.experiment,
-        #     i,
-        #     random_index,
-        # )
-
-        for i in per_opt.tolist():
-            total_pred_list.append(i)
-        for i in label.tolist():
-            total_label_list.append(i)
-
-    pred = torch.tensor(total_pred_list)
-    label = torch.tensor(total_label_list)
-
-    # save the results
-    save_path = Path(config.train.log_path) / "best_preds"
-
-    if save_path.exists() is False:
-        save_path.mkdir(parents=True)
-
-    torch.save(
-        pred,
-        save_path / f"{config.model.model}_{config.data.sampling}_{fold}_pred.pt",
-    )
-    torch.save(
-        label,
-        save_path / f"{config.model.model}_{config.data.sampling}_{fold}_label.pt",
-    )
-
-    logging.info(
-        f"save the pred and label into {save_path} / {config.model.model}_{config.data.sampling}_{fold}"
-    )
-
-    # save attention map from model 
-
-
-    return pred, label
-
+# @warnings.deprecated('not used')
 # def save_inference(config, model, dataloader, fold):
 
 #     total_pred_list = []
@@ -388,7 +321,16 @@ def save_inference_atn(config, model, dataloader, fold):
 
 #     return pred, label
 
-def save_inference(all_pred, all_label, fold: str, save_path: str):
+def save_inference(all_pred: list, all_label: list, fold: str, save_path: str):
+    """save the inference results to .pt file.
+
+    Args:
+        all_pred (list): predict result.
+        all_label (list): label result.
+        fold (str): fold number.
+        save_path (str): save path.
+    """       
+
     pred = torch.tensor(all_pred)
     label = torch.tensor(all_label)
 
@@ -411,12 +353,12 @@ def save_inference(all_pred, all_label, fold: str, save_path: str):
         f"save the pred and label into {save_path} / {fold}"
     )
 
-def save_metrics(all_pred, all_label, fold: str, save_path: str, num_class: int):
-    """save the metrics to file.
+def save_metrics(all_pred: list, all_label: list, fold: str, save_path: str, num_class: int):
+    """save the metrics to .txt file.
 
     Args:
-        all_pred (_type_): all the predict result.
-        all_label (_type_): all the label result.
+        all_pred (list): all the predict result.
+        all_label (list): all the label result.
         fold (str): the fold number.
         save_path (str): the path to save the metrics.
         num_class (int): number of class.
@@ -426,9 +368,6 @@ def save_metrics(all_pred, all_label, fold: str, save_path: str, num_class: int)
     all_pred = torch.tensor(all_pred)
     all_label = torch.tensor(all_label)
 
-    # define metrics
-    # num_class = torch.unique(all_label).size(0)
-    num_class = num_class
     _accuracy = MulticlassAccuracy(num_class)
     _precision = MulticlassPrecision(num_class)
     _recall = MulticlassRecall(num_class)
@@ -475,21 +414,17 @@ def save_CM(all_pred: list, all_label: list, save_path: str, num_class: int, fol
     if save_path.exists() is False:
         save_path.mkdir(parents=True)
 
-    # define metrics
-    # num_class = torch.unique(all_label).size(0)
-    num_class = num_class
     _confusion_matrix = MulticlassConfusionMatrix(num_class, normalize="true")
 
     logging.info("_confusion_matrix: %s" % _confusion_matrix(all_pred, all_label))
 
-    # 设置字体和标题样式
+    # set the font and title
     plt.rcParams.update({"font.size": 30, "font.family": "sans-serif"})
 
     confusion_matrix_data = _confusion_matrix(all_pred, all_label).cpu().numpy() * 100
 
     axis_labels = ["ASD", "DHS", "LCS_HipOA"]
 
-    # 使用matplotlib和seaborn绘制混淆矩阵
     plt.figure(figsize=(8, 6))
     sns.heatmap(
         confusion_matrix_data,
@@ -513,7 +448,7 @@ def save_CM(all_pred: list, all_label: list, save_path: str, num_class: int, fol
         f"save the confusion matrix into {save_path}/fold{fold}_confusion_matrix.png"
     )
 
-
+@warnings.deprecated('not used')
 def save_CAM(
     config,
     model: torch.nn.Module,
