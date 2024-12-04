@@ -39,7 +39,7 @@ from torchmetrics.classification import (
 )
 
 from project.models.make_model import ATN3DCNN
-from project.helper import save_CAM, save_CM, save_metrics
+from project.helper import save_CAM, save_CM, save_metrics, save_inference
 
 
 class BackboneATNModule(LightningModule):
@@ -241,6 +241,8 @@ class BackboneATNModule(LightningModule):
     def on_test_epoch_end(self) -> None:
         """hook function for test epoch end"""
 
+        # save inference
+        save_inference(self.test_pred_list, self.test_label_list, fold=self.logger.name, save_path=self.hparams.hparams.train.log_path)
         # save metrics
         save_metrics(self.test_pred_list, self.test_label_list, fold=self.logger.name, save_path=self.hparams.hparams.train.log_path, num_class=self.num_classes)
         # save confusion matrix

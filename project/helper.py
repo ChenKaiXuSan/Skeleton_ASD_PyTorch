@@ -308,86 +308,108 @@ def save_inference_atn(config, model, dataloader, fold):
 
     return pred, label
 
-def save_inference(config, model, dataloader, fold):
+# def save_inference(config, model, dataloader, fold):
 
-    total_pred_list = []
-    total_label_list = []
+#     total_pred_list = []
+#     total_label_list = []
 
-    test_dataloader = dataloader.test_dataloader()
+#     test_dataloader = dataloader.test_dataloader()
 
-    for i, batch in enumerate(test_dataloader):
+#     for i, batch in enumerate(test_dataloader):
 
-        # input and label
-        video = (
-            batch["video"].detach().to(f"cuda:{config.train.gpu_num}")
-        )  # b, c, t, h, w
-        label = (
-            batch["label"].detach().to(f"cuda:{config.train.gpu_num}")
-        )  # b, class_num
+#         # input and label
+#         video = (
+#             batch["video"].detach().to(f"cuda:{config.train.gpu_num}")
+#         )  # b, c, t, h, w
+#         label = (
+#             batch["label"].detach().to(f"cuda:{config.train.gpu_num}")
+#         )  # b, class_num
 
-        if "cnn_lstm" in config.train.experiment:
-            label = label.repeat_interleave(video.size()[2])
+#         if "cnn_lstm" in config.train.experiment:
+#             label = label.repeat_interleave(video.size()[2])
         
-        if "2dcnn" in config.train.experiment:
-            b, c, t, h, w = video.size()
-            label = label.repeat_interleave(video.size()[2])
-            video = video.reshape(b*t, c, h, w)
+#         if "2dcnn" in config.train.experiment:
+#             b, c, t, h, w = video.size()
+#             label = label.repeat_interleave(video.size()[2])
+#             video = video.reshape(b*t, c, h, w)
             
 
-        model.eval().to(f"cuda:{config.train.gpu_num}")
+#         model.eval().to(f"cuda:{config.train.gpu_num}")
 
-        # pred the video frames
-        with torch.no_grad():
-            preds = model(video)
+#         # pred the video frames
+#         with torch.no_grad():
+#             preds = model(video)
 
-        # when torch.size([1]), not squeeze.
-        if preds.size()[0] != 1 or len(preds.size()) != 1:
-            preds = preds.squeeze(dim=-1)
-            preds_softmax = torch.softmax(preds, dim=1)
-        else:
-            preds_softmax = torch.softmax(preds, dim=1)
+#         # when torch.size([1]), not squeeze.
+#         if preds.size()[0] != 1 or len(preds.size()) != 1:
+#             preds = preds.squeeze(dim=-1)
+#             preds_softmax = torch.softmax(preds, dim=1)
+#         else:
+#             preds_softmax = torch.softmax(preds, dim=1)
 
-        # random_index = random.sample(range(0, video.size()[0]), 2)
-        # save_CAM(
-        #     config,
-        #     model.video_cnn,
-        #     video,
-        #     label,
-        #     fold,
-        #     config.train.experiment,
-        #     i,
-        #     random_index,
-        # )
+#         # random_index = random.sample(range(0, video.size()[0]), 2)
+#         # save_CAM(
+#         #     config,
+#         #     model.video_cnn,
+#         #     video,
+#         #     label,
+#         #     fold,
+#         #     config.train.experiment,
+#         #     i,
+#         #     random_index,
+#         # )
 
-        for i in preds_softmax.tolist():
-            total_pred_list.append(i)
-        for i in label.tolist():
-            total_label_list.append(i)
+#         for i in preds_softmax.tolist():
+#             total_pred_list.append(i)
+#         for i in label.tolist():
+#             total_label_list.append(i)
 
-    pred = torch.tensor(total_pred_list)
-    label = torch.tensor(total_label_list)
+#     pred = torch.tensor(total_pred_list)
+#     label = torch.tensor(total_label_list)
+
+#     # save the results
+#     save_path = Path(config.train.log_path) / "best_preds"
+
+#     if save_path.exists() is False:
+#         save_path.mkdir(parents=True)
+
+#     torch.save(
+#         pred,
+#         save_path / f"{config.model.model}_{config.data.sampling}_{fold}_pred.pt",
+#     )
+#     torch.save(
+#         label,
+#         save_path / f"{config.model.model}_{config.data.sampling}_{fold}_label.pt",
+#     )
+
+#     logging.info(
+#         f"save the pred and label into {save_path} / {config.model.model}_{config.data.sampling}_{fold}"
+#     )
+
+#     return pred, label
+
+def save_inference(all_pred, all_label, fold: str, save_path: str):
+    pred = torch.tensor(all_pred)
+    label = torch.tensor(all_label)
 
     # save the results
-    save_path = Path(config.train.log_path) / "best_preds"
+    save_path = Path(save_path) / "best_preds"
 
     if save_path.exists() is False:
         save_path.mkdir(parents=True)
 
     torch.save(
         pred,
-        save_path / f"{config.model.model}_{config.data.sampling}_{fold}_pred.pt",
+        save_path / f"{fold}_pred.pt",
     )
     torch.save(
         label,
-        save_path / f"{config.model.model}_{config.data.sampling}_{fold}_label.pt",
+        save_path / f"{fold}_label.pt",
     )
 
     logging.info(
-        f"save the pred and label into {save_path} / {config.model.model}_{config.data.sampling}_{fold}"
+        f"save the pred and label into {save_path} / {fold}"
     )
-
-    return pred, label
-
 
 def save_metrics(all_pred, all_label, fold: str, save_path: str, num_class: int):
     """save the metrics to file.
