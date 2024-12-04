@@ -16,6 +16,8 @@ HISTORY:
 Date 	By 	Comments
 ------------------------------------------------
 
+04-12-2024	Kaixu Chen	save confusion matrix and metrics in test step.
+
 22-03-2024	Kaixu Chen	add different class number mapping, now the class number is a hyperparameter.
 
 14-12-2023	Kaixu Chen refactor the code, now it a simple code to train video frame from dataloader.
